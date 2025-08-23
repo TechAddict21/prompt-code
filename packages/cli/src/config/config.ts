@@ -79,9 +79,10 @@ export interface CliArgs {
 
 export async function parseArguments(): Promise<CliArgs> {
   const yargsInstance = yargs(hideBin(process.argv))
-    .scriptName('qwen')
+    .scriptName('prompt-code')
     .usage(
-      'Usage: qwen [options] [command]\n\nQwen Code - Launch an interactive CLI, use -p/--prompt for non-interactive mode',
+      '$0 [options]',
+      'Prompt Code - Launch an interactive CLI, use -p/--prompt for non-interactive mode',
     )
     .command('$0', 'Launch Qwen Code', (yargsInstance) =>
       yargsInstance
