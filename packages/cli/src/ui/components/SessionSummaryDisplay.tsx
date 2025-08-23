@@ -14,5 +14,5 @@ interface SessionSummaryDisplayProps {
 export const SessionSummaryDisplay: React.FC<SessionSummaryDisplayProps> = ({
   duration,
 }) => (
-  <StatsDisplay title="Agent powering down. Goodbye!" duration={duration} />
+  <StatsDisplay title="Prompt Code is going to sleep ..." duration={duration} />
 );

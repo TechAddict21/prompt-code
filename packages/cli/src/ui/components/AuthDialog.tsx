@@ -46,35 +46,10 @@ export function AuthDialog({
   );
   const [showOpenAIKeyPrompt, setShowOpenAIKeyPrompt] = useState(false);
   const items = [
+    { label: 'Prompt Code', value: AuthType.PROMPT_CODE },
     { label: 'Qwen OAuth', value: AuthType.QWEN_OAUTH },
     { label: 'OpenAI', value: AuthType.USE_OPENAI },
   ];
-
-  const initialAuthIndex = Math.max(
-    0,
-    items.findIndex((item) => {
-      if (settings.merged.selectedAuthType) {
-        return item.value === settings.merged.selectedAuthType;
-      }
-
-      const defaultAuthType = parseDefaultAuthType(
-        process.env.GEMINI_DEFAULT_AUTH_TYPE,
-      );
-      if (defaultAuthType) {
-        return item.value === defaultAuthType;
-      }
-
-      if (process.env.GEMINI_API_KEY) {
-        return item.value === AuthType.USE_GEMINI;
-      }
-
-      if (process.env.QWEN_OAUTH_TOKEN) {
-        return item.value === AuthType.QWEN_OAUTH;
-      }
-
-      return item.value === AuthType.LOGIN_WITH_GOOGLE;
-    }),
-  );
 
   const handleAuthSelect = (authMethod: AuthType) => {
     const error = validateAuthMethod(authMethod);
@@ -147,14 +122,13 @@ export function AuthDialog({
       padding={1}
       width="100%"
     >
-      <Text bold>Get started</Text>
-      <Box marginTop={1}>
-        <Text>How would you like to authenticate for this project?</Text>
+      <Box>
+        <Text>How would you like to authenticate ?</Text>
       </Box>
       <Box marginTop={1}>
         <RadioButtonSelect
           items={items}
-          initialIndex={initialAuthIndex}
+          initialIndex={0}
           onSelect={handleAuthSelect}
           isFocused={true}
         />
@@ -168,7 +142,7 @@ export function AuthDialog({
         <Text color={Colors.AccentPurple}>(Use Enter to Set Auth)</Text>
       </Box>
       <Box marginTop={1}>
-        <Text>Terms of Services and Privacy Notice for Qwen Code</Text>
+        <Text>Terms of Services and Privacy Notice for Prompt Code</Text>
       </Box>
       <Box marginTop={1}>
         <Text color={Colors.AccentBlue}>

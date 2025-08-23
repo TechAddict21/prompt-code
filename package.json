@@ -49,7 +49,7 @@
     "clean": "node scripts/clean.js"
   },
   "bin": {
-    "qwen": "bundle/gemini.js"
+    "prompt-code": "bundle/gemini.js"
   },
   "files": [
     "bundle/",

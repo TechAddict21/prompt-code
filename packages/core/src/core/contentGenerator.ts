@@ -41,6 +41,7 @@ export interface ContentGenerator {
 }
 
 export enum AuthType {
+  PROMPT_CODE = 'prompt-code',
   LOGIN_WITH_GOOGLE = 'oauth-personal',
   USE_GEMINI = 'gemini-api-key',
   USE_VERTEX_AI = 'vertex-ai',
@@ -184,7 +185,7 @@ export async function createContentGenerator(
 
   if (config.authType === AuthType.USE_OPENAI) {
     if (!config.apiKey) {
-      throw new Error('OpenAI API key is required');
+      throw new Error('Prompt Code API key is required !');
     }
 
     // Import OpenAIContentGenerator dynamically to avoid circular dependencies
