@@ -144,7 +144,7 @@ export function AuthDialog({
       <Box marginTop={1}>
         <Text>Terms of Services and Privacy Notice for Prompt Code</Text>
       </Box>
-      <Box marginTop={1}>
+      <Box>
         <Text color={Colors.AccentBlue}>
           {'https://github.com/QwenLM/Qwen3-Coder/blob/main/README.md'}
         </Text>
