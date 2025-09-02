@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Imports
 import { Text } from 'ink';
 import { Colors } from '../colors.js';
 import { tokenLimit } from '@qwen-code/qwen-code-core';
@@ -15,6 +16,11 @@ export const ContextUsageDisplay = ({
   promptTokenCount: number;
   model: string;
 }) => {
+
+  if (process.env['IS_MINIMAL_UI_RENDERING'] == 'TRUE') {
+    return <></>
+  }
+
   const percentage = promptTokenCount / tokenLimit(model);
 
   return (

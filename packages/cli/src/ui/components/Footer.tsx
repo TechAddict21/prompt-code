@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Imports
 import React from 'react';
 import { Box, Text } from 'ink';
 import { theme } from '../semantic-colors.js';
@@ -15,7 +16,6 @@ import Gradient from 'ink-gradient';
 import { MemoryUsageDisplay } from './MemoryUsageDisplay.js';
 import { ContextUsageDisplay } from './ContextUsageDisplay.js';
 import { DebugProfiler } from './DebugProfiler.js';
-
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { isNarrowWidth } from '../utils/isNarrowWidth.js';
 
@@ -59,6 +59,10 @@ export const Footer: React.FC<FooterProps> = ({
   const displayPath = isNarrow
     ? path.basename(tildeifyPath(targetDir))
     : shortenPath(tildeifyPath(targetDir), pathLength);
+
+  if (process.env['IS_MINIMAL_UI_RENDERING'] == 'TRUE') {
+      return <></>
+    }
 
   return (
     <Box

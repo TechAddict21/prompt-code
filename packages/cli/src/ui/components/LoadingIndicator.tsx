@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Imports
 import { ThoughtSummary } from '@qwen-code/qwen-code-core';
 import React from 'react';
 import { Box, Text } from 'ink';
@@ -28,6 +29,12 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
   rightContent,
   thought,
 }) => {
+
+  // Minimal UI Rendering for CLI connection to external tools
+  if (process.env['IS_MINIMAL_UI_RENDERING'] == 'TRUE') {
+    return <></>
+  }
+
   const streamingState = useStreamingContext();
   const { columns: terminalWidth } = useTerminalSize();
   const isNarrow = isNarrowWidth(terminalWidth);

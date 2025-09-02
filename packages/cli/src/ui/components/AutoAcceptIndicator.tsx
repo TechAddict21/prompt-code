@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Imports
 import React from 'react';
 import { Box, Text } from 'ink';
 import { Colors } from '../colors.js';
@@ -16,6 +17,12 @@ interface AutoAcceptIndicatorProps {
 export const AutoAcceptIndicator: React.FC<AutoAcceptIndicatorProps> = ({
   approvalMode,
 }) => {
+
+  // Minimal UI Rendering for CLI connection to external tools
+  if (process.env['IS_MINIMAL_UI_RENDERING'] == 'TRUE') {
+    return <></>
+  }
+
   let textColor = '';
   let textContent = '';
   let subText = '';

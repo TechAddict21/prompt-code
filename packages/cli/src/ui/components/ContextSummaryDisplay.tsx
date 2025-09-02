@@ -31,6 +31,12 @@ export const ContextSummaryDisplay: React.FC<ContextSummaryDisplayProps> = ({
   showToolDescriptions,
   ideContext,
 }) => {
+
+  // Minimal UI Rendering for CLI connection to external tools
+  if (process.env['IS_MINIMAL_UI_RENDERING'] == 'TRUE') {
+      return <></>
+  }
+
   const { columns: terminalWidth } = useTerminalSize();
   const isNarrow = isNarrowWidth(terminalWidth);
   const mcpServerCount = Object.keys(mcpServers || {}).length;
