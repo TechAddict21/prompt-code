@@ -4,8 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useRef, useCallback } from 'react';
+// Imports
 import { HistoryItem } from '../types.js';
+import { useState, useRef, useCallback } from 'react';
+import { sendWebhook } from '../../webhook/webhook.js';
 
 // Type for the updater function passed to updateHistoryItem
 type HistoryItemUpdater = (
@@ -61,6 +63,13 @@ export function useHistory(): UseHistoryManagerReturn {
             return prevHistory; // Don't add the duplicate
           }
         }
+
+        // Send webhook for non-user messages
+        const is_exist = history.find((el) => el.id === newItem.id); // Avoid sending webhook for duplicate messages
+        if (newItem.type !== 'user' && !is_exist) {
+          sendWebhook({ current_dir: process.cwd(), text_content: newItem.text ?? '' });
+        }
+
         return [...prevHistory, newItem];
       });
       return id; // Return the generated ID (even if not added, to keep signature)

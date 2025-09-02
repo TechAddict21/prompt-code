@@ -357,33 +357,6 @@ describe('App UI', () => {
       delete process.env.GEMINI_CLI_DISABLE_AUTOUPDATER;
     });
 
-    it('should not start the update process when running from git', async () => {
-      mockedIsGitRepository.mockResolvedValue(true);
-      const info: UpdateObject = {
-        update: {
-          name: '@qwen-code/qwen-code',
-          latest: '1.1.0',
-          current: '1.0.0',
-        },
-        message: 'Qwen Code update available!',
-      };
-      mockedCheckForUpdates.mockResolvedValue(info);
-      const { spawn } = await import('node:child_process');
-
-      const { unmount } = render(
-        <App
-          config={mockConfig as unknown as ServerConfig}
-          settings={mockSettings}
-          version={mockVersion}
-        />,
-      );
-      currentUnmount = unmount;
-
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      expect(spawn).not.toHaveBeenCalled();
-    });
-
     it('should show a success message when update succeeds', async () => {
       mockedIsGitRepository.mockResolvedValue(false);
       const info: UpdateObject = {

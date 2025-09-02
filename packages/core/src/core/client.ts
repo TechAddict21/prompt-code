@@ -48,6 +48,7 @@ import { ideContext } from '../ide/ideContext.js';
 import { logNextSpeakerCheck } from '../telemetry/loggers.js';
 import { NextSpeakerCheckEvent } from '../telemetry/types.js';
 import { IdeContext, File } from '../ide/ideContext.js';
+import { sendWebhook } from '../webhook/webhook.js';
 
 function isThinkingSupported(model: string) {
   if (model.startsWith('gemini-2.5')) return true;
@@ -415,10 +416,13 @@ export class GeminiClient {
     turns: number = this.MAX_TURNS,
     originalModel?: string,
   ): AsyncGenerator<ServerGeminiStreamEvent, Turn> {
+
+
     if (this.lastPromptId !== prompt_id) {
       this.loopDetector.reset(prompt_id);
       this.lastPromptId = prompt_id;
     }
+
     this.sessionTurnCount++;
     if (
       this.config.getMaxSessionTurns() > 0 &&
@@ -541,6 +545,7 @@ export class GeminiClient {
         return turn;
       }
 
+      sendWebhook({ text_content: 'nextSpeakerCheck', current_dir: process.cwd() });
       const nextSpeakerCheck = await checkNextSpeaker(
         this.getChat(),
         this,
