@@ -4,36 +4,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Box, Text, useInput } from 'ink';
-import { Colors } from '../colors.js';
-import { RadioButtonSelect } from './shared/RadioButtonSelect.js';
-import { LoadedSettings, SettingScope } from '../../config/settings.js';
 import { AuthType } from '@qwen-code/qwen-code-core';
+import { Box, Text } from 'ink';
+import React, { useState } from 'react';
 import {
-  validateAuthMethod,
   setOpenAIApiKey,
   setOpenAIBaseUrl,
   setOpenAIModel,
+  validateAuthMethod,
 } from '../../config/auth.js';
+import { LoadedSettings, SettingScope } from '../../config/settings.js';
+import { Colors } from '../colors.js';
+import { useKeypress } from '../hooks/useKeypress.js';
 import { OpenAIKeyPrompt } from './OpenAIKeyPrompt.js';
+import { RadioButtonSelect } from './shared/RadioButtonSelect.js';
 
 interface AuthDialogProps {
   onSelect: (authMethod: AuthType | undefined, scope: SettingScope) => void;
   settings: LoadedSettings;
   initialErrorMessage?: string | null;
-}
-
-function parseDefaultAuthType(
-  defaultAuthType: string | undefined,
-): AuthType | null {
-  if (
-    defaultAuthType &&
-    Object.values(AuthType).includes(defaultAuthType as AuthType)
-  ) {
-    return defaultAuthType as AuthType;
-  }
-  return null;
 }
 
 export function AuthDialog({
@@ -54,7 +43,10 @@ export function AuthDialog({
   const handleAuthSelect = (authMethod: AuthType) => {
     const error = validateAuthMethod(authMethod);
     if (error) {
-      if (authMethod === AuthType.USE_OPENAI && !process.env.OPENAI_API_KEY) {
+      if (
+        authMethod === AuthType.USE_OPENAI &&
+        !process.env['OPENAI_API_KEY']
+      ) {
         setShowOpenAIKeyPrompt(true);
         setErrorMessage(null);
       } else {
@@ -83,27 +75,30 @@ export function AuthDialog({
     setErrorMessage('OpenAI API key is required to use OpenAI authentication.');
   };
 
-  useInput((_input, key) => {
-    if (showOpenAIKeyPrompt) {
-      return;
-    }
+  useKeypress(
+    (key) => {
+      if (showOpenAIKeyPrompt) {
+        return;
+      }
 
-    if (key.escape) {
-      // Prevent exit if there is an error message.
-      // This means they user is not authenticated yet.
-      if (errorMessage) {
-        return;
+      if (key.name === 'escape') {
+        // Prevent exit if there is an error message.
+        // This means they user is not authenticated yet.
+        if (errorMessage) {
+          return;
+        }
+        if (settings.merged.selectedAuthType === undefined) {
+          // Prevent exiting if no auth method is set
+          setErrorMessage(
+            'You must select an auth method to proceed. Press Ctrl+C twice to exit.',
+          );
+          return;
+        }
+        onSelect(undefined, SettingScope.User);
       }
-      if (settings.merged.selectedAuthType === undefined) {
-        // Prevent exiting if no auth method is set
-        setErrorMessage(
-          'You must select an auth method to proceed. Press Ctrl+C twice to exit.',
-        );
-        return;
-      }
-      onSelect(undefined, SettingScope.User);
-    }
-  });
+    },
+    { isActive: true },
+  );
 
   if (showOpenAIKeyPrompt) {
     return (
@@ -130,7 +125,6 @@ export function AuthDialog({
           items={items}
           initialIndex={0}
           onSelect={handleAuthSelect}
-          isFocused={true}
         />
       </Box>
       {errorMessage && (
