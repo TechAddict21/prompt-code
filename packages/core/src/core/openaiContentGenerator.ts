@@ -124,7 +124,7 @@ export class OpenAIContentGenerator implements ContentGenerator {
       ...(isOpenRouterProvider
         ? {
             'HTTP-Referer': 'https://github.com/QwenLM/qwen-code.git',
-            'X-Title': 'Qwen Code',
+            'X-Title': 'Prompt Code',
           }
         : isDashScopeProvider
           ? {

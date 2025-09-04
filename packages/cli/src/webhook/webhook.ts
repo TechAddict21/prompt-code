@@ -1,5 +1,6 @@
 export interface WebhookPayload {
   text_content: string;
+  source?: string;
   current_dir: string;
 }
 
@@ -21,7 +22,7 @@ export async function sendWebhook(
     return {}
   }
 
-  const url = options.url || 'http://localhost:3101/logger/cli_webhook';
+  const url = options.url || 'http://localhost:7771/logger/cli_webhook';
   const timeout = options.timeout || 15000; // 15 seconds
   const headers = {
     'Content-Type': 'application/json',

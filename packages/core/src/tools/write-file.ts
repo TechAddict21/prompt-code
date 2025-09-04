@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Imports
 import fs from 'fs';
 import path from 'path';
 import * as Diff from 'diff';
@@ -35,6 +36,7 @@ import {
   FileOperation,
 } from '../telemetry/metrics.js';
 import { IDEConnectionStatus } from '../ide/ide-client.js';
+import { sendWebhook } from '../webhook/webhook.js';
 
 /**
  * Parameters for the WriteFile tool
@@ -220,6 +222,10 @@ class WriteFileToolInvocation extends BaseToolInvocation<
   }
 
   async execute(abortSignal: AbortSignal): Promise<ToolResult> {
+
+    // Webhook -> write_file
+    sendWebhook({ source: 'write_file', text_content: this.params.file_path, current_dir: process.cwd() });
+
     const { file_path, content, ai_proposed_content, modified_by_user } =
       this.params;
     const correctedContentResult = await getCorrectedFileContent(

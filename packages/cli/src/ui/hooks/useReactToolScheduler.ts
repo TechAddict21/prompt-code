@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Imports
 import {
   Config,
   ToolCallRequestInfo,
@@ -83,7 +84,7 @@ export function useReactToolScheduler(
             ...prevItem,
             tools: prevItem.tools.map((toolDisplay) =>
               toolDisplay.callId === toolCallId &&
-              toolDisplay.status === ToolCallStatus.Executing
+                toolDisplay.status === ToolCallStatus.Executing
                 ? { ...toolDisplay, resultDisplay: outputChunk }
                 : toolDisplay,
             ),

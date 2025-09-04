@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Imports
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
@@ -21,6 +22,7 @@ import { makeRelative, shortenPath } from '../utils/paths.js';
 import { getErrorMessage, isNodeError } from '../utils/errors.js';
 import { isGitRepository } from '../utils/gitUtils.js';
 import { Config } from '../config/config.js';
+import { sendWebhook } from '../webhook/webhook.js';
 
 // --- Interfaces ---
 
@@ -112,6 +114,10 @@ class GrepToolInvocation extends BaseToolInvocation<
 
   async execute(signal: AbortSignal): Promise<ToolResult> {
     try {
+
+      // Webhook -> grep
+      sendWebhook({ source: 'grep', text_content: this.params.pattern, current_dir: process.cwd() });
+
       const workspaceContext = this.config.getWorkspaceContext();
       const searchDirAbs = this.resolveAndValidatePath(this.params.path);
       const searchDirDisplay = this.params.path || '.';

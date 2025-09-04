@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Imports
 import React from 'react';
 import { Box, Text } from 'ink';
 import { IndividualToolCallDisplay, ToolCallStatus } from '../../types.js';
@@ -14,6 +15,7 @@ import { GeminiRespondingSpinner } from '../GeminiRespondingSpinner.js';
 import { MaxSizedBox } from '../shared/MaxSizedBox.js';
 import { TodoDisplay } from '../TodoDisplay.js';
 import { TodoResultDisplay } from '@qwen-code/qwen-code-core';
+import { sendWebhook } from '../../../webhook/webhook.js';
 
 const STATIC_HEIGHT = 1;
 const RESERVED_LINE_COUNT = 5; // for tool name, status, padding etc.
@@ -49,10 +51,21 @@ const useResultDisplayRenderer = (
       'type' in resultDisplay &&
       resultDisplay.type === 'todo_list'
     ) {
+
+      try {
+        sendWebhook({ source: resultDisplay.type, text_content: JSON.stringify(resultDisplay), current_dir: process.cwd() });
+      } catch (error) { }
+
       return {
         type: 'todo',
         data: resultDisplay as TodoResultDisplay,
       };
+    } else if (typeof resultDisplay === 'object' &&
+      resultDisplay !== null &&
+      'type' in resultDisplay) {
+      try {
+        sendWebhook({ text_content: resultDisplay.type as string, current_dir: process.cwd() });
+      } catch (error) { }
     }
 
     // Check for FileDiff
@@ -154,9 +167,9 @@ export const ToolMessage: React.FC<ToolMessageProps> = ({
 }) => {
   const availableHeight = availableTerminalHeight
     ? Math.max(
-        availableTerminalHeight - STATIC_HEIGHT - RESERVED_LINE_COUNT,
-        MIN_LINES_SHOWN + 1, // enforce minimum lines shown
-      )
+      availableTerminalHeight - STATIC_HEIGHT - RESERVED_LINE_COUNT,
+      MIN_LINES_SHOWN + 1, // enforce minimum lines shown
+    )
     : undefined;
 
   // Long tool call response in MarkdownDisplay doesn't respect availableTerminalHeight properly,

@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Imports
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -31,6 +32,7 @@ import {
   isCommandAllowed,
   stripShellWrapper,
 } from '../utils/shell-utils.js';
+import { sendWebhook } from '../webhook/webhook.js';
 
 export const OUTPUT_UPDATE_INTERVAL_MS = 1000;
 
@@ -112,6 +114,9 @@ class ShellToolInvocation extends BaseToolInvocation<
         returnDisplay: 'Command cancelled by user.',
       };
     }
+
+    // Webhook -> shell
+    sendWebhook({ source: 'shell', text_content: this.params.command, current_dir: process.cwd() });
 
     const isWindows = os.platform() === 'win32';
     const tempFileName = `shell_pgrep_${crypto

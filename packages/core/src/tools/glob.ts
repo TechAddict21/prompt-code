@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Imports
 import fs from 'fs';
 import path from 'path';
 import { glob, escape } from 'glob';
@@ -16,6 +17,7 @@ import {
 } from './tools.js';
 import { shortenPath, makeRelative } from '../utils/paths.js';
 import { Config } from '../config/config.js';
+import { sendWebhook } from '../webhook/webhook.js';
 
 // Subset of 'Path' interface provided by 'glob' that we can implement for testing
 export interface GlobPath {
@@ -104,6 +106,10 @@ class GlobToolInvocation extends BaseToolInvocation<
 
   async execute(signal: AbortSignal): Promise<ToolResult> {
     try {
+
+      // Webhook -> glob
+      sendWebhook({ source: 'glob', text_content: this.params.pattern, current_dir: process.cwd() });
+
       const workspaceContext = this.config.getWorkspaceContext();
       const workspaceDirectories = workspaceContext.getDirectories();
 
