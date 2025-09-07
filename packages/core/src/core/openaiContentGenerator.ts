@@ -31,6 +31,7 @@ import { ApiErrorEvent, ApiResponseEvent } from '../telemetry/types.js';
 import { Config } from '../config/config.js';
 import { openaiLogger } from '../utils/openaiLogger.js';
 import { safeJsonParse } from '../utils/safeJsonParse.js';
+import { sendWebhook } from '../webhook/webhook.js';
 
 // Extended types to support cache_control
 interface ChatCompletionContentPartTextWithCache
@@ -123,15 +124,15 @@ export class OpenAIContentGenerator implements ContentGenerator {
       'User-Agent': userAgent,
       ...(isOpenRouterProvider
         ? {
-            'HTTP-Referer': 'https://github.com/QwenLM/qwen-code.git',
-            'X-Title': 'Prompt Code',
-          }
+          'HTTP-Referer': 'https://github.com/QwenLM/qwen-code.git',
+          'X-Title': 'Prompt Code',
+        }
         : isDashScopeProvider
           ? {
-              'X-DashScope-CacheControl': 'enable',
-              'X-DashScope-UserAgent': userAgent,
-              'X-DashScope-AuthType': contentGeneratorConfig.authType,
-            }
+            'X-DashScope-CacheControl': 'enable',
+            'X-DashScope-UserAgent': userAgent,
+            'X-DashScope-AuthType': contentGeneratorConfig.authType,
+          }
           : {}),
     };
 
@@ -373,10 +374,10 @@ export class OpenAIContentGenerator implements ContentGenerator {
       if (isTimeoutError) {
         throw new Error(
           `${errorMessage}\n\nTroubleshooting tips:\n` +
-            `- Reduce input length or complexity\n` +
-            `- Increase timeout in config: contentGenerator.timeout\n` +
-            `- Check network connectivity\n` +
-            `- Consider using streaming mode for long responses`,
+          `- Reduce input length or complexity\n` +
+          `- Increase timeout in config: contentGenerator.timeout\n` +
+          `- Check network connectivity\n` +
+          `- Consider using streaming mode for long responses`,
         );
       }
 
@@ -483,10 +484,10 @@ export class OpenAIContentGenerator implements ContentGenerator {
           if (isTimeoutError) {
             throw new Error(
               `${errorMessage}\n\nStreaming timeout troubleshooting:\n` +
-                `- Reduce input length or complexity\n` +
-                `- Increase timeout in config: contentGenerator.timeout\n` +
-                `- Check network stability for streaming connections\n` +
-                `- Consider using non-streaming mode for very long inputs`,
+              `- Reduce input length or complexity\n` +
+              `- Increase timeout in config: contentGenerator.timeout\n` +
+              `- Check network stability for streaming connections\n` +
+              `- Consider using non-streaming mode for very long inputs`,
             );
           }
 
@@ -531,10 +532,10 @@ export class OpenAIContentGenerator implements ContentGenerator {
       if (isTimeoutError) {
         throw new Error(
           `${errorMessage}\n\nStreaming setup timeout troubleshooting:\n` +
-            `- Reduce input length or complexity\n` +
-            `- Increase timeout in config: contentGenerator.timeout\n` +
-            `- Check network connectivity and firewall settings\n` +
-            `- Consider using non-streaming mode for very long inputs`,
+          `- Reduce input length or complexity\n` +
+          `- Increase timeout in config: contentGenerator.timeout\n` +
+          `- Check network connectivity and firewall settings\n` +
+          `- Consider using non-streaming mode for very long inputs`,
         );
       }
 
@@ -1377,6 +1378,8 @@ export class OpenAIContentGenerator implements ContentGenerator {
         totalTokenCount: totalTokens,
         cachedContentTokenCount: cachedTokens,
       };
+
+      sendWebhook({ source: 'token_usage', text_content: JSON.stringify(response.usageMetadata), current_dir: process.cwd() });
     }
 
     return response;
@@ -1502,6 +1505,7 @@ export class OpenAIContentGenerator implements ContentGenerator {
 
     // Add usage metadata if available in the chunk
     if (chunk.usage) {
+      
       const usage = chunk.usage as OpenAIUsage;
 
       const promptTokens = usage.prompt_tokens || 0;
@@ -1526,6 +1530,8 @@ export class OpenAIContentGenerator implements ContentGenerator {
         totalTokenCount: totalTokens,
         cachedContentTokenCount: cachedTokens,
       };
+
+      sendWebhook({ source: 'token_usage', text_content: JSON.stringify(response.usageMetadata), current_dir: process.cwd() });
     }
 
     return response;
