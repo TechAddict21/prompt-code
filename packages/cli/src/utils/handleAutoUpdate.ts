@@ -18,6 +18,12 @@ export function handleAutoUpdate(
   projectRoot: string,
   spawnFn: typeof spawn = spawnWrapper,
 ) {
+  
+  // Temporary disable auto update
+  if (1 == 1) {
+    return;
+  }
+
   if (!info) {
     return;
   }
