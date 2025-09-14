@@ -14,8 +14,12 @@ import { MarkdownDisplay } from '../../utils/MarkdownDisplay.js';
 import { GeminiRespondingSpinner } from '../GeminiRespondingSpinner.js';
 import { MaxSizedBox } from '../shared/MaxSizedBox.js';
 import { TodoDisplay } from '../TodoDisplay.js';
-import { TodoResultDisplay } from '@qwen-code/qwen-code-core';
 import { sendWebhook } from '../../../webhook/webhook.js';
+import {
+  TodoResultDisplay,
+  TaskResultDisplay,
+} from '@qwen-code/qwen-code-core';
+import { AgentExecutionDisplay } from '../subagents/index.js';
 
 const STATIC_HEIGHT = 1;
 const RESERVED_LINE_COUNT = 5; // for tool name, status, padding etc.
@@ -31,7 +35,8 @@ type DisplayRendererResult =
   | { type: 'none' }
   | { type: 'todo'; data: TodoResultDisplay }
   | { type: 'string'; data: string }
-  | { type: 'diff'; data: { fileDiff: string; fileName: string } };
+  | { type: 'diff'; data: { fileDiff: string; fileName: string } }
+  | { type: 'task'; data: TaskResultDisplay };
 
 /**
  * Custom hook to determine the type of result display and return appropriate rendering info
@@ -68,6 +73,19 @@ const useResultDisplayRenderer = (
       } catch (error) { }
     }
 
+    // Check for SubagentExecutionResultDisplay (for non-task tools)
+    if (
+      typeof resultDisplay === 'object' &&
+      resultDisplay !== null &&
+      'type' in resultDisplay &&
+      resultDisplay.type === 'task_execution'
+    ) {
+      return {
+        type: 'task',
+        data: resultDisplay as TaskResultDisplay,
+      };
+    }
+
     // Check for FileDiff
     if (
       typeof resultDisplay === 'object' &&
@@ -93,6 +111,21 @@ const useResultDisplayRenderer = (
 const TodoResultRenderer: React.FC<{ data: TodoResultDisplay }> = ({
   data,
 }) => <TodoDisplay todos={data.todos} />;
+
+/**
+ * Component to render subagent execution results
+ */
+const SubagentExecutionRenderer: React.FC<{
+  data: TaskResultDisplay;
+  availableHeight?: number;
+  childWidth: number;
+}> = ({ data, availableHeight, childWidth }) => (
+  <AgentExecutionDisplay
+    data={data}
+    availableHeight={availableHeight}
+    childWidth={childWidth}
+  />
+);
 
 /**
  * Component to render string results (markdown or plain text)
@@ -202,6 +235,13 @@ export const ToolMessage: React.FC<ToolMessageProps> = ({
             {displayRenderer.type === 'todo' && (
               <TodoResultRenderer data={displayRenderer.data} />
             )}
+            {displayRenderer.type === 'task' && (
+              <SubagentExecutionRenderer
+                data={displayRenderer.data}
+                availableHeight={availableHeight}
+                childWidth={childWidth}
+              />
+            )}
             {displayRenderer.type === 'string' && (
               <StringResultRenderer
                 data={displayRenderer.data}
@@ -242,7 +282,7 @@ const ToolStatusIndicator: React.FC<ToolStatusIndicatorProps> = ({
       />
     )}
     {status === ToolCallStatus.Success && (
-      <Text color={Colors.AccentGreen}>✔</Text>
+      <Text color={Colors.AccentGreen}>✓</Text>
     )}
     {status === ToolCallStatus.Confirming && (
       <Text color={Colors.AccentYellow}>?</Text>
@@ -294,7 +334,8 @@ const ToolInfo: React.FC<ToolInfo> = ({
       >
         <Text color={nameColor} bold>
           {name}
-        </Text>{' '}
+        </Text>
+        <Text> </Text>
         <Text color={Colors.Gray}>{description}</Text>
       </Text>
     </Box>

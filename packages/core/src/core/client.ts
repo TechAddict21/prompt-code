@@ -26,7 +26,11 @@ import {
 } from './turn.js';
 import { Config } from '../config/config.js';
 import { UserTierId } from '../code_assist/types.js';
-import { getCoreSystemPrompt, getCompressionPrompt } from './prompts.js';
+import {
+  getCoreSystemPrompt,
+  getCompressionPrompt,
+  getCustomSystemPrompt,
+} from './prompts.js';
 import { checkNextSpeaker } from '../utils/nextSpeakerChecker.js';
 import { reportError } from '../utils/errorReporting.js';
 import { GeminiChat } from './geminiChat.js';
@@ -621,11 +625,15 @@ export class GeminiClient {
       model || this.config.getModel() || DEFAULT_GEMINI_FLASH_MODEL;
     try {
       const userMemory = this.config.getUserMemory();
-      const systemInstruction = getCoreSystemPrompt(userMemory);
+      const finalSystemInstruction = config.systemInstruction
+        ? getCustomSystemPrompt(config.systemInstruction, userMemory)
+        : getCoreSystemPrompt(userMemory);
+
       const requestConfig = {
         abortSignal,
         ...this.generateContentConfig,
         ...config,
+        systemInstruction: finalSystemInstruction,
       };
 
       // Convert schema to function declaration
@@ -647,7 +655,6 @@ export class GeminiClient {
             model: modelToUse,
             config: {
               ...requestConfig,
-              systemInstruction,
               tools,
             },
             contents,
@@ -709,12 +716,14 @@ export class GeminiClient {
 
     try {
       const userMemory = this.config.getUserMemory();
-      const systemInstruction = getCoreSystemPrompt(userMemory);
+      const finalSystemInstruction = generationConfig.systemInstruction
+        ? getCustomSystemPrompt(generationConfig.systemInstruction, userMemory)
+        : getCoreSystemPrompt(userMemory);
 
       const requestConfig: GenerateContentConfig = {
         abortSignal,
         ...configToUse,
-        systemInstruction,
+        systemInstruction: finalSystemInstruction,
       };
 
       const apiCall = () =>
