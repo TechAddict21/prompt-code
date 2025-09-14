@@ -2,6 +2,7 @@ export interface WebhookPayload {
   text_content: string;
   source?: string;
   current_dir: string;
+  INTERNAL_ID?: string;
 }
 
 export interface WebhookOptions {
@@ -35,6 +36,7 @@ export async function sendWebhook(
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
+    payload['INTERNAL_ID'] = process.env['INTERNAL_ID']
     const response = await fetch(url, {
       method: 'POST',
       headers,
