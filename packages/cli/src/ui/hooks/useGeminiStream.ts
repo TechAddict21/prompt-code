@@ -229,7 +229,7 @@ export const useGeminiStream = (
     addItem(
       {
         type: MessageType.INFO,
-        text: 'Request cancelled.',
+        text: 'Request is cancelled.',
       },
       Date.now(),
     );

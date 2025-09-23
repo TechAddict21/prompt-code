@@ -23,14 +23,14 @@ export const GeminiMessage: React.FC<GeminiMessageProps> = ({
   availableTerminalHeight,
   terminalWidth,
 }) => {
-  const prefix = '✦ ';
+  const prefix = '';
   const prefixWidth = prefix.length;
 
   return (
     <Box flexDirection="row">
       <Box width={prefixWidth}>
         <Text
-          color={Colors.AccentPurple}
+          color={Colors.AccentCyan}
           aria-label={SCREEN_READER_MODEL_PREFIX}
         >
           {prefix}

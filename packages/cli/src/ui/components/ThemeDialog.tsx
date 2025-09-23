@@ -209,18 +209,24 @@ export function ThemeDialog({
   return (
     <Box
       borderStyle="round"
-      borderColor={Colors.Gray}
+      borderColor={Colors.AccentPurple}
       flexDirection="column"
       paddingTop={includePadding ? 1 : 0}
       paddingBottom={includePadding ? 1 : 0}
-      paddingLeft={1}
-      paddingRight={1}
+      paddingLeft={2}
+      paddingRight={2}
       width="100%"
+      backgroundColor={Colors.Background}
     >
+      <Box alignItems="center" marginBottom={1}>
+        <Text color={Colors.AccentPurple} bold>
+          Theme Selection
+        </Text>
+      </Box>
       <Box flexDirection="row">
         {/* Left Column: Selection */}
         <Box flexDirection="column" width="45%" paddingRight={2}>
-          <Text bold={currentFocusedSection === 'theme'} wrap="truncate">
+          <Text bold={currentFocusedSection === 'theme'} wrap="truncate" color={Colors.AccentPurple}>
             {currentFocusedSection === 'theme' ? '> ' : '  '}Select Theme{' '}
             <Text color={Colors.Gray}>{otherScopeModifiedMessage}</Text>
           </Text>

@@ -17,6 +17,7 @@ import { ContextUsageDisplay } from './ContextUsageDisplay.js';
 import { DebugProfiler } from './DebugProfiler.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { isNarrowWidth } from '../utils/isNarrowWidth.js';
+import { Colors } from '../colors.js';
 
 interface FooterProps {
   model: string;
@@ -59,6 +60,27 @@ export const Footer: React.FC<FooterProps> = ({
     ? path.basename(tildeifyPath(targetDir))
     : shortenPath(tildeifyPath(targetDir), pathLength);
 
+  // Format model name for display
+  const formatModelName = (modelName: string): string => {
+    if (modelName === 'moonshotai/Kimi-K2-Instruct-0905') {
+      return 'Kimi-K2';
+    }
+    return modelName;
+  };
+
+  // Format token count for display
+  const formatTokenCount = (tokenCount: number): string => {
+    if (tokenCount === 0) return '';
+    
+    if (tokenCount >= 1000000) {
+      return ` (${(tokenCount / 1000000).toFixed(1)}M tokens)`;
+    } else if (tokenCount >= 1000) {
+      return ` (${(tokenCount / 1000).toFixed(1)}K tokens)`;
+    } else {
+      return ` (${tokenCount} tokens)`;
+    }
+  };
+
   if (process.env['IS_MINIMAL_UI_RENDERING'] == 'TRUE') {
       return <></>
     }
@@ -70,7 +92,7 @@ export const Footer: React.FC<FooterProps> = ({
       flexDirection={isNarrow ? 'column' : 'row'}
       alignItems={isNarrow ? 'flex-start' : 'center'}
     >
-      <Box>
+      <Box alignItems="center">
         {debugMode && <DebugProfiler />}
         {vimMode && <Text color={theme.text.secondary}>[{vimMode}] </Text>}
         {nightly ? (
@@ -95,7 +117,7 @@ export const Footer: React.FC<FooterProps> = ({
         )}
       </Box>
 
-      {/* Middle Section: Centered Trust/Sandbox Info */}
+      {/* Middle Section: Centered Info */}
       <Box
         flexGrow={isNarrow ? 0 : 1}
         alignItems="center"
@@ -119,20 +141,21 @@ export const Footer: React.FC<FooterProps> = ({
             </Text>
           </Text>
         ) : (
-          <></>
+          <Text color={theme.text.secondary}>
+            Powered by <Text bold color={Colors.AccentCyan}>promptanswers.ai</Text>
+          </Text>
         )}
       </Box>
 
-      {/* Right Section: Gemini Label and Console Summary */}
+      {/* Right Section: Model and Console Summary */}
       <Box alignItems="center" paddingTop={isNarrow ? 1 : 0}>
-        <Text color={theme.text.accent}>
-          {isNarrow ? '' : ' '}
-          {model}{' '}
-          <ContextUsageDisplay
-            promptTokenCount={promptTokenCount}
-            model={model}
-          />
+        <Text color={theme.text.accent} bold>
+          {formatModelName(model)}{formatTokenCount(promptTokenCount)}
         </Text>
+        <ContextUsageDisplay
+          promptTokenCount={promptTokenCount}
+          model={model}
+        />
         {corgiMode && (
           <Text>
             <Text color={theme.ui.symbol}>| </Text>

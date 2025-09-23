@@ -46,18 +46,19 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
 
   const cancelAndTimerContent =
     streamingState !== StreamingState.WaitingForConfirmation
-      ? `(esc to cancel, ${elapsedTime < 60 ? `${elapsedTime}s` : formatDuration(elapsedTime * 1000)})`
+      ? `(press esc key to cancel request, ${elapsedTime < 60 ? `${elapsedTime}s` : formatDuration(elapsedTime * 1000)})`
       : null;
 
   return (
-    <Box paddingLeft={0} flexDirection="column">
-      {/* Main loading line */}
+    <Box flexDirection="column">
+      
+      {/* Main loading line with professional styling */}
       <Box
         width="100%"
         flexDirection={isNarrow ? 'column' : 'row'}
         alignItems={isNarrow ? 'flex-start' : 'center'}
       >
-        <Box>
+        <Box alignItems="center">
           <Box marginRight={1}>
             <GeminiRespondingSpinner
               nonRespondingDisplay={
@@ -67,22 +68,27 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
               }
             />
           </Box>
-          {primaryText && (
-            <Text color={Colors.AccentPurple}>{"Working on your request..."}</Text>
+          {!primaryText && (
+            <Text color={Colors.Foreground} bold>
+              Processing your request...
+            </Text>
           )}
           {!isNarrow && cancelAndTimerContent && (
             <Text color={Colors.Gray}> {cancelAndTimerContent}</Text>
           )}
         </Box>
         {!isNarrow && <Box flexGrow={1}>{/* Spacer */}</Box>}
-        {!isNarrow && rightContent && <Box>{rightContent}</Box>}
+        {!isNarrow && rightContent && <Box alignItems="flex-end" justifyContent="flex-end">{rightContent}</Box>}
       </Box>
+      
+      {/* Professional status information */}
       {isNarrow && cancelAndTimerContent && (
-        <Box>
+        <Box marginTop={1}>
           <Text color={Colors.Gray}>{cancelAndTimerContent}</Text>
         </Box>
       )}
-      {isNarrow && rightContent && <Box>{rightContent}</Box>}
+      {isNarrow && rightContent && <Box marginTop={1}>{rightContent}</Box>}
+      
     </Box>
   );
 };
