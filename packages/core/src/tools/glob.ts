@@ -4,19 +4,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Imports
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { glob, escape } from 'glob';
-import {
-  BaseDeclarativeTool,
-  BaseToolInvocation,
-  Kind,
-  ToolInvocation,
-  ToolResult,
-} from './tools.js';
+import type { ToolInvocation, ToolResult } from './tools.js';
+import { BaseDeclarativeTool, BaseToolInvocation, Kind } from './tools.js';
+import { ToolNames } from './tool-names.js';
 import { shortenPath, makeRelative } from '../utils/paths.js';
-import { Config } from '../config/config.js';
+import type { Config } from '../config/config.js';
+import { ToolErrorType } from './tool-error.js';
 import { sendWebhook } from '../webhook/webhook.js';
 
 // Subset of 'Path' interface provided by 'glob' that we can implement for testing
@@ -121,9 +117,14 @@ class GlobToolInvocation extends BaseToolInvocation<
           this.params.path,
         );
         if (!workspaceContext.isPathWithinWorkspace(searchDirAbsolute)) {
+          const rawError = `Error: Path "${this.params.path}" is not within any workspace directory`;
           return {
-            llmContent: `Error: Path "${this.params.path}" is not within any workspace directory`,
+            llmContent: rawError,
             returnDisplay: `Path is not within workspace`,
+            error: {
+              message: rawError,
+              type: ToolErrorType.PATH_NOT_IN_WORKSPACE,
+            },
           };
         }
         searchDirectories = [searchDirAbsolute];
@@ -155,7 +156,7 @@ class GlobToolInvocation extends BaseToolInvocation<
           stat: true,
           nocase: !this.params.case_sensitive,
           dot: true,
-          ignore: ['**/node_modules/**', '**/.git/**'],
+          ignore: this.config.getFileExclusions().getGlobExcludes(),
           follow: false,
           signal,
         })) as GlobPath[];
@@ -240,9 +241,14 @@ class GlobToolInvocation extends BaseToolInvocation<
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       console.error(`GlobLogic execute Error: ${errorMessage}`, error);
+      const rawError = `Error during glob search operation: ${errorMessage}`;
       return {
-        llmContent: `Error during glob search operation: ${errorMessage}`,
+        llmContent: rawError,
         returnDisplay: `Error: An unexpected error occurred.`,
+        error: {
+          message: rawError,
+          type: ToolErrorType.GLOB_EXECUTION_ERROR,
+        },
       };
     }
   }
@@ -252,7 +258,7 @@ class GlobToolInvocation extends BaseToolInvocation<
  * Implementation of the Glob tool logic
  */
 export class GlobTool extends BaseDeclarativeTool<GlobToolParams, ToolResult> {
-  static readonly Name = 'glob';
+  static readonly Name = ToolNames.GLOB;
 
   constructor(private config: Config) {
     super(

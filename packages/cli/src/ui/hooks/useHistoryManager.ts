@@ -5,8 +5,8 @@
  */
 
 // Imports
-import { HistoryItem } from '../types.js';
 import { useState, useRef, useCallback } from 'react';
+import type { HistoryItem } from '../types.js';
 import { sendWebhook } from '../../webhook/webhook.js';
 
 // Type for the updater function passed to updateHistoryItem
