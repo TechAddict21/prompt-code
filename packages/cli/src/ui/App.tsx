@@ -35,11 +35,9 @@ import { useDialogClose } from './hooks/useDialogClose.js';
 import { useSlashCommandProcessor } from './hooks/slashCommandProcessor.js';
 import { useSubagentCreateDialog } from './hooks/useSubagentCreateDialog.js';
 import { useAgentsManagerDialog } from './hooks/useAgentsManagerDialog.js';
-import { useAutoAcceptIndicator } from './hooks/useAutoAcceptIndicator.js';
 import { useMessageQueue } from './hooks/useMessageQueue.js';
 import { useConsoleMessages } from './hooks/useConsoleMessages.js';
 import { LoadingIndicator } from './components/LoadingIndicator.js';
-import { AutoAcceptIndicator } from './components/AutoAcceptIndicator.js';
 import { ShellModeIndicator } from './components/ShellModeIndicator.js';
 import { InputPrompt } from './components/InputPrompt.js';
 import { Footer } from './components/Footer.js';
@@ -81,7 +79,6 @@ import { useHistory } from './hooks/useHistoryManager.js';
 import process from 'node:process';
 import type { EditorType, Config, IdeContext } from '@qwen-code/qwen-code-core';
 import {
-  ApprovalMode,
   getAllGeminiMdFilenames,
   isEditorAvailable,
   getErrorMessage,
@@ -873,7 +870,6 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
 
   const { elapsedTime, currentLoadingPhrase } =
     useLoadingIndicator(streamingState);
-  const showAutoAcceptIndicator = useAutoAcceptIndicator({ config, addItem });
 
   const handleExit = useCallback(
     (
@@ -1519,7 +1515,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
                     elapsedTime={elapsedTime}
                     rightContent={
                       <Text color={Colors.AccentCyan}>
-                        {` Powered by promptanswers.ai`}
+                        {` promptanswers.ai`}
                       </Text>
                     }
                   />
@@ -1617,7 +1613,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
                 )}
                 
                 {/* Status Indicators - Only show when there's content */}
-                {((showAutoAcceptIndicator !== ApprovalMode.DEFAULT && !shellModeActive) || shellModeActive) && (
+                {shellModeActive && (
                   <Box 
                     paddingTop={isNarrow ? 1 : 0}
                     borderStyle="round" 
@@ -1626,12 +1622,6 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
                     paddingY={1}
                     backgroundColor={Colors.Background}
                   >
-                    {showAutoAcceptIndicator !== ApprovalMode.DEFAULT &&
-                      !shellModeActive && (
-                        <AutoAcceptIndicator
-                          approvalMode={showAutoAcceptIndicator}
-                        />
-                      )}
                     {shellModeActive && <ShellModeIndicator />}
                   </Box>
                 )}

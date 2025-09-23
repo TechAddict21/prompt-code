@@ -51,7 +51,7 @@
     "release:version": "node scripts/version.js",
     "telemetry": "node scripts/telemetry.js",
     "clean": "node scripts/clean.js",
-    "release": "npm run build && npm i -g . --force && prompt-code"
+    "release": "npm run build && npm i -g . --force && prompt-code -y"
   },
   "bin": {
     "prompt-code": "bundle/gemini.js"
