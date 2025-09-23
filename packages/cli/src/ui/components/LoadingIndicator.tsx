@@ -4,9 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Imports
-import { ThoughtSummary } from '@qwen-code/qwen-code-core';
-import React from 'react';
+import type { ThoughtSummary } from '@qwen-code/qwen-code-core';
+import type React from 'react';
 import { Box, Text } from 'ink';
 import { Colors } from '../colors.js';
 import { useStreamingContext } from '../contexts/StreamingContext.js';

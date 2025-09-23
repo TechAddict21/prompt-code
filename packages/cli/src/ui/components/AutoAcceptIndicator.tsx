@@ -4,8 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Imports
-import React from 'react';
+import type React from 'react';
 import { Box, Text } from 'ink';
 import { Colors } from '../colors.js';
 import { ApprovalMode } from '@qwen-code/qwen-code-core';

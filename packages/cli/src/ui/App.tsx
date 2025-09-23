@@ -7,14 +7,20 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   Box,
-  DOMElement,
+  type DOMElement,
   measureElement,
   Static,
   Text,
   useStdin,
   useStdout,
 } from 'ink';
-import { StreamingState, type HistoryItem, MessageType } from './types.js';
+import {
+  StreamingState,
+  type HistoryItem,
+  MessageType,
+  ToolCallStatus,
+  type HistoryItemWithoutId,
+} from './types.js';
 import { useTerminalSize } from './hooks/useTerminalSize.js';
 import { useGeminiStream } from './hooks/useGeminiStream.js';
 import { useLoadingIndicator } from './hooks/useLoadingIndicator.js';
@@ -46,13 +52,25 @@ import { FolderTrustDialog } from './components/FolderTrustDialog.js';
 import { ShellConfirmationDialog } from './components/ShellConfirmationDialog.js';
 import { QuitConfirmationDialog } from './components/QuitConfirmationDialog.js';
 import { RadioButtonSelect } from './components/shared/RadioButtonSelect.js';
+import { ModelSelectionDialog } from './components/ModelSelectionDialog.js';
+import {
+  ModelSwitchDialog,
+  type VisionSwitchOutcome,
+} from './components/ModelSwitchDialog.js';
+import {
+  getOpenAIAvailableModelFromEnv,
+  getFilteredQwenModels,
+  type AvailableModel,
+} from './models/availableModels.js';
+import { processVisionSwitchOutcome } from './hooks/useVisionAutoSwitch.js';
 import {
   AgentCreationWizard,
   AgentsManagerDialog,
 } from './components/subagents/index.js';
 import { Colors } from './colors.js';
 import { loadHierarchicalGeminiMemory } from '../config/config.js';
-import { LoadedSettings, SettingScope } from '../config/settings.js';
+import type { LoadedSettings } from '../config/settings.js';
+import { SettingScope } from '../config/settings.js';
 import { Tips } from './components/Tips.js';
 import { ConsolePatcher } from './utils/ConsolePatcher.js';
 import { registerCleanup } from '../utils/cleanup.js';
@@ -61,23 +79,22 @@ import { HistoryItemDisplay } from './components/HistoryItemDisplay.js';
 import { ContextSummaryDisplay } from './components/ContextSummaryDisplay.js';
 import { useHistory } from './hooks/useHistoryManager.js';
 import process from 'node:process';
+import type { EditorType, Config, IdeContext } from '@qwen-code/qwen-code-core';
 import {
-  getErrorMessage,
-  type Config,
-  getAllGeminiMdFilenames,
   ApprovalMode,
+  getAllGeminiMdFilenames,
   isEditorAvailable,
-  EditorType,
-  FlashFallbackEvent,
-  logFlashFallback,
+  getErrorMessage,
   AuthType,
-  type IdeContext,
+  logFlashFallback,
+  FlashFallbackEvent,
   ideContext,
+  isProQuotaExceededError,
+  isGenericQuotaExceededError,
+  UserTierId,
 } from '@qwen-code/qwen-code-core';
-import {
-  IdeIntegrationNudge,
-  IdeIntegrationNudgeResult,
-} from './IdeIntegrationNudge.js';
+import type { IdeIntegrationNudgeResult } from './IdeIntegrationNudge.js';
+import { IdeIntegrationNudge } from './IdeIntegrationNudge.js';
 import { validateAuthMethod } from '../config/auth.js';
 import { useLogger } from './hooks/useLogger.js';
 import { StreamingContext } from './contexts/StreamingContext.js';
@@ -91,18 +108,14 @@ import { useBracketedPaste } from './hooks/useBracketedPaste.js';
 import { useTextBuffer } from './components/shared/text-buffer.js';
 import { useVimMode, VimModeProvider } from './contexts/VimModeContext.js';
 import { useVim } from './hooks/vim.js';
-import { useKeypress, Key } from './hooks/useKeypress.js';
+import type { Key } from './hooks/useKeypress.js';
+import { useKeypress } from './hooks/useKeypress.js';
 import { KeypressProvider } from './contexts/KeypressContext.js';
 import { useKittyKeyboardProtocol } from './hooks/useKittyKeyboardProtocol.js';
 import { keyMatchers, Command } from './keyMatchers.js';
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 import { UpdateNotification } from './components/UpdateNotification.js';
-import {
-  isProQuotaExceededError,
-  isGenericQuotaExceededError,
-  UserTierId,
-} from '@qwen-code/qwen-code-core';
-import { UpdateObject } from './utils/updateCheck.js';
+import type { UpdateObject } from './utils/updateCheck.js';
 import ansiEscapes from 'ansi-escapes';
 import { OverflowProvider } from './contexts/OverflowContext.js';
 import { ShowMoreLines } from './components/ShowMoreLines.js';
@@ -112,6 +125,8 @@ import { SettingsDialog } from './components/SettingsDialog.js';
 import { setUpdateHandler } from '../utils/handleAutoUpdate.js';
 import { appEvents, AppEvent } from '../utils/events.js';
 import { isNarrowWidth } from './utils/isNarrowWidth.js';
+import { useWorkspaceMigration } from './hooks/useWorkspaceMigration.js';
+import { WorkspaceMigrationDialog } from './components/WorkspaceMigrationDialog.js';
 import { WelcomeBackDialog } from './components/WelcomeBackDialog.js';
 
 // Maximum number of queued messages to display in UI to prevent performance issues
@@ -124,12 +139,28 @@ interface AppProps {
   version: string;
 }
 
+function isToolExecuting(pendingHistoryItems: HistoryItemWithoutId[]) {
+  return pendingHistoryItems.some((item) => {
+    if (item && item.type === 'tool_group') {
+      return item.tools.some(
+        (tool) => ToolCallStatus.Executing === tool.status,
+      );
+    }
+    return false;
+  });
+}
+
 export const AppWrapper = (props: AppProps) => {
   const kittyProtocolStatus = useKittyKeyboardProtocol();
+  const nodeMajorVersion = parseInt(process.versions.node.split('.')[0], 10);
   return (
     <KeypressProvider
       kittyProtocolEnabled={kittyProtocolStatus.enabled}
+      pasteWorkaround={process.platform === 'win32' || nodeMajorVersion < 20}
       config={props.config}
+      debugKeystrokeLogging={
+        props.settings.merged.general?.debugKeystrokeLogging
+      }
     >
       <SessionStatsProvider>
         <VimModeProvider settings={props.settings}>
@@ -156,7 +187,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
   const shouldShowIdePrompt =
     currentIDE &&
     !config.getIdeMode() &&
-    !settings.merged.hasSeenIdeIntegrationNudge &&
+    !settings.merged.ide?.hasSeenNudge &&
     !idePromptAnswered;
 
   useEffect(() => {
@@ -220,6 +251,26 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
   >();
   const [showEscapePrompt, setShowEscapePrompt] = useState(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const {
+    showWorkspaceMigrationDialog,
+    workspaceExtensions,
+    onWorkspaceMigrationDialogOpen,
+    onWorkspaceMigrationDialogClose,
+  } = useWorkspaceMigration(settings);
+
+  // Model selection dialog states
+  const [isModelSelectionDialogOpen, setIsModelSelectionDialogOpen] =
+    useState(false);
+  const [isVisionSwitchDialogOpen, setIsVisionSwitchDialogOpen] =
+    useState(false);
+  const [visionSwitchResolver, setVisionSwitchResolver] = useState<{
+    resolve: (result: {
+      modelOverride?: string;
+      persistSessionModel?: string;
+      showGuidance?: boolean;
+    }) => void;
+    reject: () => void;
+  } | null>(null);
 
   useEffect(() => {
     const unsubscribe = ideContext.subscribeToIdeContext(setIdeContextState);
@@ -290,10 +341,8 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
     closeAgentsManagerDialog,
   } = useAgentsManagerDialog();
 
-  const { isFolderTrustDialogOpen, handleFolderTrustSelect } = useFolderTrust(
-    settings,
-    setIsTrustedFolder,
-  );
+  const { isFolderTrustDialogOpen, handleFolderTrustSelect, isRestarting } =
+    useFolderTrust(settings, setIsTrustedFolder);
 
   const { showQuitConfirmation, handleQuitConfirmationSelect } =
     useQuitConfirmation();
@@ -316,16 +365,21 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
   } = useQwenAuth(settings, isAuthenticating);
 
   useEffect(() => {
-    if (settings.merged.selectedAuthType && !settings.merged.useExternalAuth) {
-      const error = validateAuthMethod(settings.merged.selectedAuthType);
+    if (
+      settings.merged.security?.auth?.selectedType &&
+      !settings.merged.security?.auth?.useExternal
+    ) {
+      const error = validateAuthMethod(
+        settings.merged.security.auth.selectedType,
+      );
       if (error) {
         setAuthError(error);
         openAuthDialog();
       }
     }
   }, [
-    settings.merged.selectedAuthType,
-    settings.merged.useExternalAuth,
+    settings.merged.security?.auth?.selectedType,
+    settings.merged.security?.auth?.useExternal,
     openAuthDialog,
     setAuthError,
   ]);
@@ -381,14 +435,14 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
     try {
       const { memoryContent, fileCount } = await loadHierarchicalGeminiMemory(
         process.cwd(),
-        settings.merged.loadMemoryFromIncludeDirectories
+        settings.merged.context?.loadMemoryFromIncludeDirectories
           ? config.getWorkspaceContext().getDirectories()
           : [],
         config.getDebugMode(),
         config.getFileService(),
         settings.merged,
         config.getExtensionContextFilePaths(),
-        settings.merged.memoryImportFormat || 'tree', // Use setting or default to 'tree'
+        settings.merged.context?.importFormat || 'tree', // Use setting or default to 'tree'
         config.getFileFilteringOptions(),
       );
 
@@ -546,7 +600,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
   }, []);
 
   const getPreferredEditor = useCallback(() => {
-    const editorType = settings.merged.preferredEditor;
+    const editorType = settings.merged.general?.preferredEditor;
     const isValidEditor = isEditorAvailable(editorType);
     if (!isValidEditor) {
       openEditorDialog();
@@ -559,6 +613,75 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
     setAuthError('reauth required');
     openAuthDialog();
   }, [openAuthDialog, setAuthError]);
+
+  // Vision switch handler for auto-switch functionality
+  const handleVisionSwitchRequired = useCallback(
+    async (_query: unknown) =>
+      new Promise<{
+        modelOverride?: string;
+        persistSessionModel?: string;
+        showGuidance?: boolean;
+      }>((resolve, reject) => {
+        setVisionSwitchResolver({ resolve, reject });
+        setIsVisionSwitchDialogOpen(true);
+      }),
+    [],
+  );
+
+  const handleVisionSwitchSelect = useCallback(
+    (outcome: VisionSwitchOutcome) => {
+      setIsVisionSwitchDialogOpen(false);
+      if (visionSwitchResolver) {
+        const result = processVisionSwitchOutcome(outcome);
+        visionSwitchResolver.resolve(result);
+        setVisionSwitchResolver(null);
+      }
+    },
+    [visionSwitchResolver],
+  );
+
+  const handleModelSelectionOpen = useCallback(() => {
+    setIsModelSelectionDialogOpen(true);
+  }, []);
+
+  const handleModelSelectionClose = useCallback(() => {
+    setIsModelSelectionDialogOpen(false);
+  }, []);
+
+  const handleModelSelect = useCallback(
+    (modelId: string) => {
+      config.setModel(modelId);
+      setCurrentModel(modelId);
+      setIsModelSelectionDialogOpen(false);
+      addItem(
+        {
+          type: MessageType.INFO,
+          text: `Switched model to \`${modelId}\` for this session.`,
+        },
+        Date.now(),
+      );
+    },
+    [config, setCurrentModel, addItem],
+  );
+
+  const getAvailableModelsForCurrentAuth = useCallback((): AvailableModel[] => {
+    const contentGeneratorConfig = config.getContentGeneratorConfig();
+    if (!contentGeneratorConfig) return [];
+
+    const visionModelPreviewEnabled =
+      settings.merged.experimental?.visionModelPreview ?? false;
+
+    switch (contentGeneratorConfig.authType) {
+      case AuthType.QWEN_OAUTH:
+        return getFilteredQwenModels(visionModelPreviewEnabled);
+      case AuthType.USE_OPENAI: {
+        const openAIModel = getOpenAIAvailableModelFromEnv();
+        return openAIModel ? [openAIModel] : [];
+      }
+      default:
+        return [];
+    }
+  }, [config, settings.merged.experimental?.visionModelPreview]);
 
   // Core hooks and processors
   const {
@@ -590,6 +713,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
     setQuittingMessages,
     openPrivacyNotice,
     openSettingsDialog,
+    handleModelSelectionOpen,
     openSubagentCreateDialog,
     openAgentsManagerDialog,
     toggleVimEnabled,
@@ -634,6 +758,19 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
     setModelSwitchedFromQuotaError,
     refreshStatic,
     () => cancelHandlerRef.current(),
+    settings.merged.experimental?.visionModelPreview ?? false,
+    handleVisionSwitchRequired,
+  );
+
+  const pendingHistoryItems = useMemo(
+    () =>
+      [...pendingSlashCommandHistoryItems, ...pendingGeminiHistoryItems].map(
+        (item, index) => ({
+          ...item,
+          id: index,
+        }),
+      ),
+    [pendingSlashCommandHistoryItems, pendingGeminiHistoryItems],
   );
 
   // Welcome back functionality
@@ -651,7 +788,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
     handleThemeSelect,
     isAuthDialogOpen,
     handleAuthSelect,
-    selectedAuthType: settings.merged.selectedAuthType,
+    selectedAuthType: settings.merged.security?.auth?.selectedType,
     isEditorDialogOpen,
     exitEditorDialog,
     isSettingsDialogOpen,
@@ -673,6 +810,11 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
 
   // Update the cancel handler with message queue support
   cancelHandlerRef.current = useCallback(() => {
+    if (isToolExecuting(pendingHistoryItems)) {
+      buffer.setText(''); // Just clear the prompt
+      return;
+    }
+
     const lastUserMessage = userMessages.at(-1);
     let textToSet = lastUserMessage || '';
 
@@ -686,7 +828,13 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
     if (textToSet) {
       buffer.setText(textToSet);
     }
-  }, [buffer, userMessages, getQueuedMessagesText, clearQueue]);
+  }, [
+    buffer,
+    userMessages,
+    getQueuedMessagesText,
+    clearQueue,
+    pendingHistoryItems,
+  ]);
 
   // Input handling - queue messages for processing
   const handleFinalSubmit = useCallback(
@@ -722,12 +870,10 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
   );
 
   const { handleInput: vimHandleInput } = useVim(buffer, handleFinalSubmit);
-  const pendingHistoryItems = [...pendingSlashCommandHistoryItems];
-  pendingHistoryItems.push(...pendingGeminiHistoryItems);
 
   const { elapsedTime, currentLoadingPhrase } =
     useLoadingIndicator(streamingState);
-  const showAutoAcceptIndicator = useAutoAcceptIndicator({ config });
+  const showAutoAcceptIndicator = useAutoAcceptIndicator({ config, addItem });
 
   const handleExit = useCallback(
     (
@@ -785,6 +931,11 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
 
   const handleGlobalKeypress = useCallback(
     (key: Key) => {
+      // Debug log keystrokes if enabled
+      if (settings.merged.general?.debugKeystrokeLogging) {
+        console.log('[DEBUG] Keystroke:', JSON.stringify(key));
+      }
+
       let enteringConstrainHeightMode = false;
       if (!constrainHeight) {
         enteringConstrainHeightMode = true;
@@ -844,6 +995,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
       ctrlDTimerRef,
       handleSlashCommand,
       isAuthenticating,
+      settings.merged.general?.debugKeystrokeLogging,
     ],
   );
 
@@ -857,7 +1009,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
     }
   }, [config, config.getGeminiMdFileCount]);
 
-  const logger = useLogger();
+  const logger = useLogger(config.storage);
 
   useEffect(() => {
     const fetchUserMessages = async () => {
@@ -960,12 +1112,12 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
   const branchName = useGitBranchName(config.getTargetDir());
 
   const contextFileNames = useMemo(() => {
-    const fromSettings = settings.merged.contextFileName;
+    const fromSettings = settings.merged.context?.fileName;
     if (fromSettings) {
       return Array.isArray(fromSettings) ? fromSettings : [fromSettings];
     }
     return getAllGeminiMdFilenames();
-  }, [settings.merged.contextFileName]);
+  }, [settings.merged.context?.fileName]);
 
   const initialPrompt = useMemo(() => config.getQuestion(), [config]);
   const geminiClient = config.getGeminiClient();
@@ -978,6 +1130,8 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
       !isAuthDialogOpen &&
       !isThemeDialogOpen &&
       !isEditorDialogOpen &&
+      !isModelSelectionDialogOpen &&
+      !isVisionSwitchDialogOpen &&
       !isSubagentCreateDialogOpen &&
       !showPrivacyNotice &&
       !showWelcomeBackDialog &&
@@ -999,6 +1153,8 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
     showWelcomeBackDialog,
     welcomeBackChoice,
     geminiClient,
+    isModelSelectionDialogOpen,
+    isVisionSwitchDialogOpen,
   ]);
 
   if (quittingMessages) {
@@ -1047,7 +1203,9 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
           key={staticKey}
           items={[
             <Box flexDirection="column" key="header">
-              {!settings.merged.hideTips && <Tips config={config} />}
+              {!(settings.merged.ui?.hideTips || config.getScreenReader()) && (
+                <Tips config={config} />
+              )}
             </Box>,
             ...history.map((h) => (
               <HistoryItemDisplay
@@ -1066,16 +1224,14 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
         </Static>
         <OverflowProvider>
           <Box ref={pendingHistoryItemRef} flexDirection="column">
-            {pendingHistoryItems.map((item, i) => (
+            {pendingHistoryItems.map((item) => (
               <HistoryItemDisplay
-                key={i}
+                key={item.id}
                 availableTerminalHeight={
                   constrainHeight ? availableTerminalHeight : undefined
                 }
                 terminalWidth={mainAreaWidth}
-                // TODO(taehykim): It seems like references to ids aren't necessary in
-                // HistoryItemDisplay. Refactor later. Use a fake id for now.
-                item={{ ...item, id: 0 }}
+                item={item}
                 isPending={true}
                 config={config}
                 isFocused={!isEditorDialogOpen}
@@ -1110,14 +1266,22 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
               onClose={handleWelcomeBackClose}
             />
           )}
-
-          {shouldShowIdePrompt && currentIDE ? (
+          {showWorkspaceMigrationDialog ? (
+            <WorkspaceMigrationDialog
+              workspaceExtensions={workspaceExtensions}
+              onOpen={onWorkspaceMigrationDialogOpen}
+              onClose={onWorkspaceMigrationDialogClose}
+            />
+          ) : shouldShowIdePrompt && currentIDE ? (
             <IdeIntegrationNudge
               ide={currentIDE}
               onComplete={handleIdePromptComplete}
             />
           ) : isFolderTrustDialogOpen ? (
-            <FolderTrustDialog onSelect={handleFolderTrustSelect} />
+            <FolderTrustDialog
+              onSelect={handleFolderTrustSelect}
+              isRestarting={isRestarting}
+            />
           ) : quitConfirmationRequest ? (
             <QuitConfirmationDialog
               onSelect={(choice) => {
@@ -1255,6 +1419,15 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
                 onExit={exitEditorDialog}
               />
             </Box>
+          ) : isModelSelectionDialogOpen ? (
+            <ModelSelectionDialog
+              availableModels={getAvailableModelsForCurrentAuth()}
+              currentModel={currentModel}
+              onSelect={handleModelSelect}
+              onCancel={handleModelSelectionClose}
+            />
+          ) : isVisionSwitchDialogOpen ? (
+            <ModelSwitchDialog onSelect={handleVisionSwitchSelect} />
           ) : showPrivacyNotice ? (
             <PrivacyNotice
               onExit={() => setShowPrivacyNotice(false)}
@@ -1265,12 +1438,14 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
               <LoadingIndicator
                 thought={
                   streamingState === StreamingState.WaitingForConfirmation ||
-                  config.getAccessibility()?.disableLoadingPhrases
+                  config.getAccessibility()?.disableLoadingPhrases ||
+                  config.getScreenReader()
                     ? undefined
                     : thought
                 }
                 currentLoadingPhrase={
-                  config.getAccessibility()?.disableLoadingPhrases
+                  config.getAccessibility()?.disableLoadingPhrases ||
+                  config.getScreenReader()
                     ? undefined
                     : currentLoadingPhrase
                 }
@@ -1301,8 +1476,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
                     <Box paddingLeft={2}>
                       <Text dimColor>
                         ... (+
-                        {messageQueue.length -
-                          MAX_DISPLAYED_QUEUED_MESSAGES}{' '}
+                        {messageQueue.length - MAX_DISPLAYED_QUEUED_MESSAGES}
                         more)
                       </Text>
                     </Box>
@@ -1422,7 +1596,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
               )}
             </Box>
           )}
-          {!settings.merged.hideFooter && (
+          {!settings.merged.ui?.hideFooter && (
             <Footer
               model={currentModel}
               targetDir={config.getTargetDir()}
@@ -1434,7 +1608,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
               showErrorDetails={showErrorDetails}
               showMemoryUsage={
                 config.getDebugMode() ||
-                settings.merged.showMemoryUsage ||
+                settings.merged.ui?.showMemoryUsage ||
                 false
               }
               promptTokenCount={sessionStats.lastPromptTokenCount}
