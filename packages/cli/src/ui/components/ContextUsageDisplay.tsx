@@ -4,11 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Imports
-import { Text } from 'ink';
-import { Colors } from '../colors.js';
-import { tokenLimit } from '@qwen-code/qwen-code-core';
-
 export const ContextUsageDisplay = ({
   promptTokenCount,
   model,
@@ -21,11 +16,5 @@ export const ContextUsageDisplay = ({
     return <></>
   }
 
-  const percentage = promptTokenCount / tokenLimit(model);
-
-  return (
-    <Text color={Colors.Gray}>
-      ({((1 - percentage) * 100).toFixed(0)}% context left)
-    </Text>
-  );
+  return (<></>);
 };

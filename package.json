@@ -1,5 +1,5 @@
 {
-  "name": "@qwen-code/qwen-code",
+  "name": "@prompt-code/prompt-code",
   "version": "0.0.12",
   "engines": {
     "node": ">=20.0.0"
@@ -10,7 +10,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/QwenLM/qwen-code.git"
+    "url": "git+https://github.com/TechAddict21/prompt-code"
   },
   "config": {
     "sandboxImageUri": "ghcr.io/qwenlm/qwen-code:0.0.12"
@@ -51,7 +51,7 @@
     "release:version": "node scripts/version.js",
     "telemetry": "node scripts/telemetry.js",
     "clean": "node scripts/clean.js",
-    "release": "npm run build && npm i -g . && prompt-code"
+    "release": "npm run build && npm i -g . --force && prompt-code"
   },
   "bin": {
     "prompt-code": "bundle/gemini.js"

@@ -16,12 +16,18 @@ interface TipsProps {
 export const Tips: React.FC<TipsProps> = ({ config }) => {
   return (
     <Box flexDirection="column" marginTop={1}>
-      <Text color={Colors.Foreground}>
-        <Text bold color={Colors.AccentPurple}>
-          /help
-        </Text>{' '}
-        for more information.
-      </Text>
+
+      <Box flexDirection="column" alignItems="center">
+        <Text color={Colors.Foreground}>
+          Use <Text bold color={Colors.AccentPurple}>/help</Text> for commands and <Text bold color={Colors.AccentBlue}>@filename</Text> to reference files
+        </Text>
+        
+        <Box marginTop={1} alignItems="center">
+          <Text color={Colors.Gray} dimColor>
+            Press <Text bold color={Colors.Gray}>Ctrl+C</Text> to cancel, <Text bold color={Colors.Gray}>Ctrl+D</Text> to exit
+          </Text>
+        </Box>
+      </Box>
     </Box>
   );
 };

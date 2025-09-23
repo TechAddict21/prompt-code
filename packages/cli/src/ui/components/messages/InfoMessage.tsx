@@ -19,13 +19,13 @@ export const InfoMessage: React.FC<InfoMessageProps> = ({ text }) => {
     return null;
   }
 
-  const prefix = 'ℹ ';
+  const prefix = '';
   const prefixWidth = prefix.length;
 
   return (
     <Box flexDirection="row" marginTop={1}>
       <Box width={prefixWidth}>
-        <Text color={Colors.AccentYellow}>{prefix}</Text>
+        <Text color={Colors.AccentCyan}>{prefix}</Text>
       </Box>
       <Box flexGrow={1}>
         <Text wrap="wrap" color={Colors.AccentYellow}>

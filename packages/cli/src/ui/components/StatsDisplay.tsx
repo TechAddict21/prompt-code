@@ -200,10 +200,7 @@ export const StatsDisplay: React.FC<StatsDisplayProps> = ({
       {renderTitle()}
       <Box height={1} />
 
-      <Section title="Interaction Summary">
-        <StatRow title="Session ID:">
-          <Text>{stats.sessionId}</Text>
-        </StatRow>
+      <Section title="">
         <StatRow title="Tool Calls:">
           <Text>
             {tools.totalCalls} ({' '}
@@ -239,7 +236,7 @@ export const StatsDisplay: React.FC<StatsDisplayProps> = ({
           )}
       </Section>
 
-      <Section title="Performance">
+      <Section title="">
         <StatRow title="Wall Time:">
           <Text>{duration}</Text>
         </StatRow>
@@ -271,6 +268,13 @@ export const StatsDisplay: React.FC<StatsDisplayProps> = ({
           cacheEfficiency={computed.cacheEfficiency}
         />
       )}
+
+      <Box height={1} />
+      <Box justifyContent="center" alignItems="center">
+        <Gradient colors={theme.ui.gradient}>
+          visit <Text bold color={theme.text.accent}>promptanswers.ai</Text> for more
+        </Gradient>
+      </Box>
     </Box>
   );
 };

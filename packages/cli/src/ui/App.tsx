@@ -583,12 +583,12 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
   const { stdin, setRawMode } = useStdin();
   const isInitialMount = useRef(true);
 
-  const widthFraction = 0.9;
+  const widthFraction = 0.95; // Use 95% of terminal width instead of 90%
   const inputWidth = Math.max(
     20,
-    Math.floor(terminalWidth * widthFraction) - 3,
+    Math.floor(terminalWidth * widthFraction) - 2, // Reduced padding from 3 to 2
   );
-  const suggestionsWidth = Math.max(20, Math.floor(terminalWidth * 0.8));
+  const suggestionsWidth = Math.max(20, Math.floor(terminalWidth * 0.9)); // Increased from 0.8 to 0.9
 
   // Utility callbacks
   const isValidPath = useCallback((filePath: string): boolean => {
@@ -1183,11 +1183,12 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
   const staticAreaMaxItemHeight = Math.max(terminalHeight * 4, 100);
   const placeholder = vimModeEnabled
     ? "  Press 'i' for INSERT mode and 'Esc' for NORMAL mode."
-    : '  Type your message or @path/to/file';
+    : '  Prompt code is ready to assist you with any tasks!';
 
   return (
     <StreamingContext.Provider value={streamingState}>
-      <Box flexDirection="column" width="90%">
+      <Box flexDirection="column" width="100%" paddingX={1}>
+
         {/*
          * The Static component is an Ink intrinsic in which there can only be 1 per application.
          * Because of this restriction we're hacking it slightly by having a 'header' item here to
@@ -1204,19 +1205,28 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
           items={[
             <Box flexDirection="column" key="header">
               {!(settings.merged.ui?.hideTips || config.getScreenReader()) && (
-                <Tips config={config} />
+                <Box 
+                  borderStyle="round" 
+                  borderColor={Colors.Gray}
+                  paddingX={1}
+                  paddingY={1}
+                  marginBottom={1}
+                >
+                  <Tips config={config} />
+                </Box>
               )}
             </Box>,
             ...history.map((h) => (
-              <HistoryItemDisplay
-                terminalWidth={mainAreaWidth}
-                availableTerminalHeight={staticAreaMaxItemHeight}
-                key={h.id}
-                item={h}
-                isPending={false}
-                config={config}
-                commands={slashCommands}
-              />
+              <Box key={h.id} marginBottom={1}>
+                <HistoryItemDisplay
+                  terminalWidth={mainAreaWidth}
+                  availableTerminalHeight={staticAreaMaxItemHeight}
+                  item={h}
+                  isPending={false}
+                  config={config}
+                  commands={slashCommands}
+                />
+              </Box>
             )),
           ]}
         >
@@ -1225,37 +1235,84 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
         <OverflowProvider>
           <Box ref={pendingHistoryItemRef} flexDirection="column">
             {pendingHistoryItems.map((item) => (
-              <HistoryItemDisplay
-                key={item.id}
-                availableTerminalHeight={
-                  constrainHeight ? availableTerminalHeight : undefined
-                }
-                terminalWidth={mainAreaWidth}
-                item={item}
-                isPending={true}
-                config={config}
-                isFocused={!isEditorDialogOpen}
-              />
+              <Box key={item.id} marginBottom={1}>
+                <Box 
+                  borderStyle="round" 
+                  borderColor={Colors.Gray}
+                  paddingX={1}
+                  paddingY={1}
+                  backgroundColor={Colors.Background}
+                >
+                  <HistoryItemDisplay
+                    availableTerminalHeight={
+                      constrainHeight ? availableTerminalHeight : undefined
+                    }
+                    terminalWidth={mainAreaWidth}
+                    item={item}
+                    isPending={true}
+                    config={config}
+                    isFocused={!isEditorDialogOpen}
+                  />
+                </Box>
+              </Box>
             ))}
             <ShowMoreLines constrainHeight={constrainHeight} />
           </Box>
         </OverflowProvider>
 
-        <Box flexDirection="column" ref={mainControlsRef}>
+        <Box flexDirection="column" ref={mainControlsRef} marginTop={0}>
+          {/* Professional Status Bar - Only show when there's content */}
+          {(errorCount > 0 || showErrorDetails) && (
+            <Box 
+              borderStyle="round" 
+              borderColor={Colors.Gray}
+              paddingX={2}
+              paddingY={1}
+              marginBottom={0}
+              backgroundColor={Colors.Background}
+            >
+              <Box justifyContent="space-between" alignItems="center" width="100%">
+                <Box alignItems="center">
+                  <Text color={Colors.Gray} dimColor>
+                    {errorCount > 0 && `${errorCount} error${errorCount > 1 ? 's' : ''}`}
+                    {showErrorDetails && ' • Debug mode'}
+                  </Text>
+                </Box>
+              </Box>
+            </Box>
+          )}
+
           {/* Move UpdateNotification to render update notification above input area */}
-          {updateInfo && <UpdateNotification message={updateInfo.message} />}
+          {updateInfo && (
+            <Box 
+              borderStyle="round" 
+              borderColor={Colors.Gray}
+              paddingX={1}
+              marginY={1}
+              backgroundColor={Colors.Background}
+            >
+              <UpdateNotification message={updateInfo.message} />
+            </Box>
+          )}
           {startupWarnings.length > 0 && (
             <Box
               borderStyle="round"
-              borderColor={Colors.AccentYellow}
-              paddingX={1}
+              borderColor={Colors.Gray}
+              paddingX={2}
+              paddingY={1}
               marginY={1}
               flexDirection="column"
+              backgroundColor={Colors.Background}
             >
+              <Text color={Colors.Foreground} bold>
+                Warnings
+              </Text>
               {startupWarnings.map((warning, index) => (
-                <Text key={index} color={Colors.AccentYellow}>
-                  {warning}
-                </Text>
+                <Box key={index} marginLeft={2}>
+                  <Text color={Colors.Gray}>
+                    • {warning}
+                  </Text>
+                </Box>
               ))}
             </Box>
           )}
@@ -1435,26 +1492,54 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
             />
           ) : (
             <>
-              <LoadingIndicator
-                thought={
-                  streamingState === StreamingState.WaitingForConfirmation ||
-                  config.getAccessibility()?.disableLoadingPhrases ||
-                  config.getScreenReader()
-                    ? undefined
-                    : thought
-                }
-                currentLoadingPhrase={
-                  config.getAccessibility()?.disableLoadingPhrases ||
-                  config.getScreenReader()
-                    ? undefined
-                    : currentLoadingPhrase
-                }
-                elapsedTime={elapsedTime}
-              />
+              {/* Professional Loading Indicator - Only show when processing */}
+              {streamingState !== StreamingState.Idle && (
+                <Box 
+                  borderStyle="round" 
+                  borderColor={Colors.Gray}
+                  paddingX={2}
+                  paddingY={1}
+                  marginBottom={0}
+                  backgroundColor={Colors.Background}
+                >
+                  <LoadingIndicator
+                    thought={
+                      streamingState === StreamingState.WaitingForConfirmation ||
+                      config.getAccessibility()?.disableLoadingPhrases ||
+                      config.getScreenReader()
+                        ? undefined
+                        : thought
+                    }
+                    currentLoadingPhrase={
+                      config.getAccessibility()?.disableLoadingPhrases ||
+                      config.getScreenReader()
+                        ? undefined
+                        : currentLoadingPhrase
+                    }
+                    elapsedTime={elapsedTime}
+                    rightContent={
+                      <Text color={Colors.AccentCyan}>
+                        {` Powered by promptanswers.ai`}
+                      </Text>
+                    }
+                  />
+                </Box>
+              )}
 
-              {/* Display queued messages below loading indicator */}
+              {/* Professional Queued Messages Display - Only show when there are queued messages */}
               {messageQueue.length > 0 && (
-                <Box flexDirection="column" marginTop={1}>
+                <Box 
+                  flexDirection="column" 
+                  marginTop={0}
+                  borderStyle="round" 
+                  borderColor={Colors.Gray}
+                  paddingX={2}
+                  paddingY={1}
+                  backgroundColor={Colors.Background}
+                >
+                  <Text color={Colors.Foreground} bold>
+                    Queued Messages ({messageQueue.length})
+                  </Text>
                   {messageQueue
                     .slice(0, MAX_DISPLAYED_QUEUED_MESSAGES)
                     .map((message, index) => {
@@ -1463,68 +1548,93 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
                       const preview = message.replace(/\s+/g, ' ');
 
                       return (
-                        // Ensure the Box takes full width so truncation calculates correctly
-                        <Box key={index} paddingLeft={2} width="100%">
-                          {/* Use wrap="truncate" to ensure it fits the terminal width and doesn't wrap */}
-                          <Text dimColor wrap="truncate">
-                            {preview}
+                        <Box key={index} paddingLeft={2} marginTop={1}>
+                          <Text color={Colors.Gray} dimColor wrap="truncate">
+                            {index + 1}. {preview}
                           </Text>
                         </Box>
                       );
                     })}
                   {messageQueue.length > MAX_DISPLAYED_QUEUED_MESSAGES && (
-                    <Box paddingLeft={2}>
-                      <Text dimColor>
+                    <Box paddingLeft={2} marginTop={1}>
+                      <Text color={Colors.Gray} dimColor>
                         ... (+
                         {messageQueue.length - MAX_DISPLAYED_QUEUED_MESSAGES}
-                        more)
+                        more messages queued)
                       </Text>
                     </Box>
                   )}
                 </Box>
               )}
 
+              {/* Professional Context and Status Display */}
               <Box
-                marginTop={1}
+                marginTop={0}
                 justifyContent="space-between"
                 width="100%"
                 flexDirection={isNarrow ? 'column' : 'row'}
                 alignItems={isNarrow ? 'flex-start' : 'center'}
               >
-                <Box>
-                  {process.env['GEMINI_SYSTEM_MD'] && (
-                    <Text color={Colors.AccentRed}>|⌐■_■| </Text>
-                  )}
-                  {ctrlCPressedOnce ? (
-                    <Text color={Colors.AccentYellow}>
-                      Press Ctrl+C again to confirm exit.
-                    </Text>
-                  ) : ctrlDPressedOnce ? (
-                    <Text color={Colors.AccentYellow}>
-                      Press Ctrl+D again to exit.
-                    </Text>
-                  ) : showEscapePrompt ? (
-                    <Text color={Colors.Gray}>Press Esc again to clear.</Text>
-                  ) : (
-                    <ContextSummaryDisplay
-                      ideContext={ideContextState}
-                      geminiMdFileCount={geminiMdFileCount}
-                      contextFileNames={contextFileNames}
-                      mcpServers={config.getMcpServers()}
-                      blockedMcpServers={config.getBlockedMcpServers()}
-                      showToolDescriptions={showToolDescriptions}
-                    />
-                  )}
-                </Box>
-                <Box paddingTop={isNarrow ? 1 : 0}>
-                  {showAutoAcceptIndicator !== ApprovalMode.DEFAULT &&
-                    !shellModeActive && (
-                      <AutoAcceptIndicator
-                        approvalMode={showAutoAcceptIndicator}
+                {/* Context Display - Only show when there's content */}
+                {(process.env['GEMINI_SYSTEM_MD'] || 
+                  ctrlCPressedOnce || 
+                  ctrlDPressedOnce || 
+                  showEscapePrompt || 
+                  (ideContextState && ((ideContextState.workspaceState?.openFiles?.length ?? 0) > 0 || geminiMdFileCount > 0 || Object.keys(config.getMcpServers() || {}).length > 0))) && (
+                  <Box 
+                    borderStyle="round" 
+                    borderColor={Colors.Gray}
+                    paddingX={2}
+                    paddingY={1}
+                    backgroundColor={Colors.Background}
+                    flexGrow={1}
+                    marginRight={isNarrow ? 0 : 1}
+                  >
+                    {process.env['GEMINI_SYSTEM_MD'] && (
+                      <Text color={Colors.Gray} bold>|⌐■_■| </Text>
+                    )}
+                    {ctrlCPressedOnce ? (
+                      <Text color={Colors.Gray} bold>
+                        Press Ctrl+C again to confirm exit.
+                      </Text>
+                    ) : ctrlDPressedOnce ? (
+                      <Text color={Colors.Gray} bold>
+                        Press Ctrl+D again to exit.
+                      </Text>
+                    ) : showEscapePrompt ? (
+                      <Text color={Colors.Gray}>Press Esc again to clear.</Text>
+                    ) : (
+                      <ContextSummaryDisplay
+                        ideContext={ideContextState}
+                        geminiMdFileCount={geminiMdFileCount}
+                        contextFileNames={contextFileNames}
+                        mcpServers={config.getMcpServers()}
+                        blockedMcpServers={config.getBlockedMcpServers()}
+                        showToolDescriptions={showToolDescriptions}
                       />
                     )}
-                  {shellModeActive && <ShellModeIndicator />}
-                </Box>
+                  </Box>
+                )}
+                
+                {/* Status Indicators - Only show when there's content */}
+                {((showAutoAcceptIndicator !== ApprovalMode.DEFAULT && !shellModeActive) || shellModeActive) && (
+                  <Box 
+                    paddingTop={isNarrow ? 1 : 0}
+                    borderStyle="round" 
+                    borderColor={Colors.Gray}
+                    paddingX={2}
+                    paddingY={1}
+                    backgroundColor={Colors.Background}
+                  >
+                    {showAutoAcceptIndicator !== ApprovalMode.DEFAULT &&
+                      !shellModeActive && (
+                        <AutoAcceptIndicator
+                          approvalMode={showAutoAcceptIndicator}
+                        />
+                      )}
+                    {shellModeActive && <ShellModeIndicator />}
+                  </Box>
+                )}
               </Box>
 
               {showErrorDetails && (
@@ -1543,23 +1653,32 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
               )}
 
               {isInputActive && (
-                <InputPrompt
-                  buffer={buffer}
-                  inputWidth={inputWidth}
-                  suggestionsWidth={suggestionsWidth}
-                  onSubmit={handleFinalSubmit}
-                  userMessages={userMessages}
-                  onClearScreen={handleClearScreen}
-                  config={config}
-                  slashCommands={slashCommands}
-                  commandContext={commandContext}
-                  shellModeActive={shellModeActive}
-                  setShellModeActive={setShellModeActive}
-                  onEscapePromptChange={handleEscapePromptChange}
-                  focus={isFocused}
-                  vimHandleInput={vimHandleInput}
-                  placeholder={placeholder}
-                />
+                <Box 
+                  borderStyle="round" 
+                  borderColor={Colors.Gray}
+                  paddingX={2}
+                  paddingY={1}
+                  marginTop={0}
+                  backgroundColor={Colors.Background}
+                >
+                  <InputPrompt
+                    buffer={buffer}
+                    inputWidth={inputWidth}
+                    suggestionsWidth={suggestionsWidth}
+                    onSubmit={handleFinalSubmit}
+                    userMessages={userMessages}
+                    onClearScreen={handleClearScreen}
+                    config={config}
+                    slashCommands={slashCommands}
+                    commandContext={commandContext}
+                    shellModeActive={shellModeActive}
+                    setShellModeActive={setShellModeActive}
+                    onEscapePromptChange={handleEscapePromptChange}
+                    focus={isFocused}
+                    vimHandleInput={vimHandleInput}
+                    placeholder={placeholder}
+                  />
+                </Box>
               )}
             </>
           )}
@@ -1567,55 +1686,79 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
           {initError && streamingState !== StreamingState.Responding && (
             <Box
               borderStyle="round"
-              borderColor={Colors.AccentRed}
-              paddingX={1}
+              borderColor={Colors.Gray}
+              paddingX={2}
+              paddingY={1}
               marginBottom={1}
+              backgroundColor={Colors.Background}
             >
+              <Text color={Colors.Foreground} bold>
+                Initialization Error
+              </Text>
               {history.find(
                 (item) =>
                   item.type === 'error' && item.text?.includes(initError),
               )?.text ? (
-                <Text color={Colors.AccentRed}>
-                  {
-                    history.find(
-                      (item) =>
-                        item.type === 'error' && item.text?.includes(initError),
-                    )?.text
-                  }
-                </Text>
+                <Box marginTop={1}>
+                  <Text color={Colors.AccentRed}>
+                    {
+                      history.find(
+                        (item) =>
+                          item.type === 'error' && item.text?.includes(initError),
+                      )?.text
+                    }
+                  </Text>
+                </Box>
               ) : (
-                <>
+                <Box flexDirection="column" marginTop={1}>
                   <Text color={Colors.AccentRed}>
-                    Initialization Error: {initError}
+                    Error: {initError}
                   </Text>
-                  <Text color={Colors.AccentRed}>
-                    {' '}
-                    Please check API key and configuration.
-                  </Text>
-                </>
+                  <Box marginTop={1}>
+                    <Text color={Colors.Gray}>
+                      Please check API key and configuration.
+                    </Text>
+                  </Box>
+                </Box>
               )}
             </Box>
           )}
           {!settings.merged.ui?.hideFooter && (
-            <Footer
-              model={currentModel}
-              targetDir={config.getTargetDir()}
-              debugMode={config.getDebugMode()}
-              branchName={branchName}
-              debugMessage={debugMessage}
-              corgiMode={corgiMode}
-              errorCount={errorCount}
-              showErrorDetails={showErrorDetails}
-              showMemoryUsage={
-                config.getDebugMode() ||
-                settings.merged.ui?.showMemoryUsage ||
-                false
-              }
-              promptTokenCount={sessionStats.lastPromptTokenCount}
-              nightly={nightly}
-              vimMode={vimModeEnabled ? vimMode : undefined}
-              isTrustedFolder={isTrustedFolderState}
-            />
+            <Box 
+              borderStyle="round" 
+              borderColor={Colors.Gray}
+              paddingX={2}
+              paddingY={1}
+              marginTop={0}
+              backgroundColor={Colors.Background}
+            >
+              <Footer
+                model={currentModel}
+                targetDir={config.getTargetDir()}
+                debugMode={config.getDebugMode()}
+                branchName={branchName}
+                debugMessage={debugMessage}
+                corgiMode={corgiMode}
+                errorCount={errorCount}
+                showErrorDetails={showErrorDetails}
+                showMemoryUsage={
+                  config.getDebugMode() ||
+                  settings.merged.ui?.showMemoryUsage ||
+                  false
+                }
+                promptTokenCount={(() => {
+                  // Use total accumulated tokens from all models instead of just last prompt
+                  const totalTokens = Object.values(sessionStats.metrics.models).reduce(
+                    (acc, model) => acc + model.tokens.total,
+                    0
+                  );
+                  return totalTokens > 0 ? totalTokens : sessionStats.lastPromptTokenCount;
+                })()}
+                nightly={nightly}
+                vimMode={vimModeEnabled ? vimMode : undefined}
+                isTrustedFolder={isTrustedFolderState}
+              />
+            </Box>
           )}
         </Box>
       </Box>

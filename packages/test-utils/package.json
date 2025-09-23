@@ -1,5 +1,5 @@
 {
-  "name": "@qwen-code/qwen-code-test-utils",
+  "name": "@prompt-code/prompt-code-test-utils",
   "version": "0.0.12",
   "private": true,
   "main": "src/index.ts",

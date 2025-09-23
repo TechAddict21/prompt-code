@@ -113,13 +113,22 @@ export function AuthDialog({
   return (
     <Box
       borderStyle="round"
-      borderColor={Colors.Gray}
+      borderColor={Colors.AccentBlue}
       flexDirection="column"
-      padding={1}
+      paddingX={2}
+      paddingY={1}
       width="100%"
+      backgroundColor={Colors.Background}
     >
-      <Box>
-        <Text>How would you like to authenticate ?</Text>
+      <Box alignItems="center" marginBottom={1}>
+        <Text color={Colors.AccentBlue} bold>
+          Authentication Setup
+        </Text>
+      </Box>
+      <Box marginBottom={1}>
+        <Text color={Colors.Foreground} bold>
+          How would you like to authenticate?
+        </Text>
       </Box>
       <Box marginTop={1}>
         <RadioButtonSelect
@@ -130,19 +139,25 @@ export function AuthDialog({
       </Box>
       {errorMessage && (
         <Box marginTop={1}>
-          <Text color={Colors.AccentRed}>{errorMessage}</Text>
+          <Text color={Colors.AccentRed} bold>
+            {errorMessage}
+          </Text>
         </Box>
       )}
       <Box marginTop={1}>
-        <Text color={Colors.AccentPurple}>(Use Enter to Set Auth)</Text>
-      </Box>
-      <Box marginTop={1}>
-        <Text>Terms of Services and Privacy Notice for Prompt Code</Text>
-      </Box>
-      <Box>
-        <Text color={Colors.AccentBlue}>
-          {'https://github.com/QwenLM/Qwen3-Coder/blob/main/README.md'}
+        <Text color={Colors.AccentPurple} bold>
+          Use Enter to Set Auth
         </Text>
+      </Box>
+      <Box marginTop={1} borderStyle="round" borderColor={Colors.Gray} paddingX={1} paddingY={1}>
+        <Text color={Colors.Gray} bold>
+          Terms of Services and Privacy Notice
+        </Text>
+        <Box marginTop={1}>
+          <Text color={Colors.AccentBlue}>
+            https://github.com/QwenLM/Qwen3-Coder/blob/main/README.md
+          </Text>
+        </Box>
       </Box>
     </Box>
   );

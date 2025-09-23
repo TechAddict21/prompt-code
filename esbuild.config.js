@@ -29,6 +29,22 @@ esbuild
       '@lydell/node-pty-linux-x64',
       '@lydell/node-pty-win32-arm64',
       '@lydell/node-pty-win32-x64',
+      'node:assert',
+      'node:buffer',
+      'node:child_process',
+      'node:crypto',
+      'node:fs',
+      'node:http',
+      'node:https',
+      'node:net',
+      'node:os',
+      'node:path',
+      'node:process',
+      'node:stream',
+      'node:timers',
+      'node:url',
+      'node:util',
+      'node:zlib',
     ],
     alias: {
       'is-in-ci': path.resolve(
@@ -39,9 +55,9 @@ esbuild
     define: {
       'process.env.CLI_VERSION': JSON.stringify(pkg.version),
     },
-    banner: {
-      js: `import { createRequire } from 'module'; const require = createRequire(import.meta.url); globalThis.__filename = require('url').fileURLToPath(import.meta.url); globalThis.__dirname = require('path').dirname(globalThis.__filename);`,
-    },
+    inject: [
+      path.resolve(__dirname, 'scripts/require-shim.js'),
+    ],
     loader: { '.node': 'file' },
   })
   .catch(() => process.exit(1));

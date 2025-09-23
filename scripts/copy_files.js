@@ -53,4 +53,3 @@ if (!fs.existsSync(sourceDir)) {
 }
 
 copyFilesRecursive(sourceDir, targetDir);
-console.log('Successfully copied files.');
