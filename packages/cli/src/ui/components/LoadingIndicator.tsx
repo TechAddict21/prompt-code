@@ -69,7 +69,7 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
             />
           </Box>
           {primaryText && (
-            <Text color={Colors.AccentPurple}>{primaryText}</Text>
+            <Text color={Colors.AccentPurple}>{"Working on your request..."}</Text>
           )}
           {!isNarrow && cancelAndTimerContent && (
             <Text color={Colors.Gray}> {cancelAndTimerContent}</Text>
