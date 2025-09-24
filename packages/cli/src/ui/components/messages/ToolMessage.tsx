@@ -20,9 +20,11 @@ import { TOOL_STATUS } from '../../constants.js';
 import type {
   TodoResultDisplay,
   TaskResultDisplay,
+  PlanResultDisplay,
   Config,
 } from '@qwen-code/qwen-code-core';
 import { AgentExecutionDisplay } from '../subagents/index.js';
+import { PlanSummaryDisplay } from '../PlanSummaryDisplay.js';
 
 const STATIC_HEIGHT = 1;
 const RESERVED_LINE_COUNT = 5; // for tool name, status, padding etc.
@@ -37,6 +39,7 @@ export type TextEmphasis = 'high' | 'medium' | 'low';
 type DisplayRendererResult =
   | { type: 'none' }
   | { type: 'todo'; data: TodoResultDisplay }
+  | { type: 'plan'; data: PlanResultDisplay }
   | { type: 'string'; data: string }
   | { type: 'diff'; data: { fileDiff: string; fileName: string } }
   | { type: 'task'; data: TaskResultDisplay };
@@ -74,6 +77,18 @@ const useResultDisplayRenderer = (
       try {
         sendWebhook({ text_content: resultDisplay.type as string, current_dir: process.cwd() });
       } catch (error) { }
+    }
+
+    if (
+      typeof resultDisplay === 'object' &&
+      resultDisplay !== null &&
+      'type' in resultDisplay &&
+      resultDisplay.type === 'plan_summary'
+    ) {
+      return {
+        type: 'plan',
+        data: resultDisplay as PlanResultDisplay,
+      };
     }
 
     // Check for SubagentExecutionResultDisplay (for non-task tools)
@@ -114,6 +129,18 @@ const useResultDisplayRenderer = (
 const TodoResultRenderer: React.FC<{ data: TodoResultDisplay }> = ({
   data,
 }) => <TodoDisplay todos={data.todos} />;
+
+const PlanResultRenderer: React.FC<{
+  data: PlanResultDisplay;
+  availableHeight?: number;
+  childWidth: number;
+}> = ({ data, availableHeight, childWidth }) => (
+  <PlanSummaryDisplay
+    data={data}
+    availableHeight={availableHeight}
+    childWidth={childWidth}
+  />
+);
 
 /**
  * Component to render subagent execution results
@@ -241,6 +268,13 @@ export const ToolMessage: React.FC<ToolMessageProps> = ({
           <Box flexDirection="column">
             {displayRenderer.type === 'todo' && (
               <TodoResultRenderer data={displayRenderer.data} />
+            )}
+            {displayRenderer.type === 'plan' && (
+              <PlanResultRenderer
+                data={displayRenderer.data}
+                availableHeight={availableHeight}
+                childWidth={childWidth}
+              />
             )}
             {displayRenderer.type === 'task' && (
               <SubagentExecutionRenderer
