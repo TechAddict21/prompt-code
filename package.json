@@ -1,6 +1,6 @@
 {
   "name": "@prompt-code/prompt-code",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "engines": {
     "node": ">=20.0.0"
   },
@@ -13,7 +13,7 @@
     "url": "git+https://github.com/TechAddict21/prompt-code"
   },
   "config": {
-    "sandboxImageUri": "ghcr.io/qwenlm/qwen-code:0.0.12"
+    "sandboxImageUri": "ghcr.io/qwenlm/qwen-code:0.0.13"
   },
   "scripts": {
     "start": "node scripts/start.js",
@@ -51,7 +51,7 @@
     "release:version": "node scripts/version.js",
     "telemetry": "node scripts/telemetry.js",
     "clean": "node scripts/clean.js",
-    "release": "npm run build && npm i -g . --force && prompt-code"
+    "release": "npm run build && npm i -g . --force && prompt-code -y"
   },
   "bin": {
     "prompt-code": "bundle/gemini.js"

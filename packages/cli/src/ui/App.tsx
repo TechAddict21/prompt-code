@@ -35,11 +35,9 @@ import { useDialogClose } from './hooks/useDialogClose.js';
 import { useSlashCommandProcessor } from './hooks/slashCommandProcessor.js';
 import { useSubagentCreateDialog } from './hooks/useSubagentCreateDialog.js';
 import { useAgentsManagerDialog } from './hooks/useAgentsManagerDialog.js';
-import { useAutoAcceptIndicator } from './hooks/useAutoAcceptIndicator.js';
 import { useMessageQueue } from './hooks/useMessageQueue.js';
 import { useConsoleMessages } from './hooks/useConsoleMessages.js';
 import { LoadingIndicator } from './components/LoadingIndicator.js';
-import { AutoAcceptIndicator } from './components/AutoAcceptIndicator.js';
 import { ShellModeIndicator } from './components/ShellModeIndicator.js';
 import { InputPrompt } from './components/InputPrompt.js';
 import { Footer } from './components/Footer.js';
@@ -81,7 +79,6 @@ import { useHistory } from './hooks/useHistoryManager.js';
 import process from 'node:process';
 import type { EditorType, Config, IdeContext } from '@qwen-code/qwen-code-core';
 import {
-  ApprovalMode,
   getAllGeminiMdFilenames,
   isEditorAvailable,
   getErrorMessage,
@@ -565,7 +562,9 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
       }
 
       // Switch model for future use but return false to stop current retry
-      config.setModel(fallbackModel);
+      config.setModel(fallbackModel).catch((error) => {
+        console.error('Failed to switch to fallback model:', error);
+      });
       config.setFallbackMode(true);
       logFlashFallback(
         config,
@@ -649,17 +648,28 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
   }, []);
 
   const handleModelSelect = useCallback(
-    (modelId: string) => {
-      config.setModel(modelId);
-      setCurrentModel(modelId);
-      setIsModelSelectionDialogOpen(false);
-      addItem(
-        {
-          type: MessageType.INFO,
-          text: `Switched model to \`${modelId}\` for this session.`,
-        },
-        Date.now(),
-      );
+    async (modelId: string) => {
+      try {
+        await config.setModel(modelId);
+        setCurrentModel(modelId);
+        setIsModelSelectionDialogOpen(false);
+        addItem(
+          {
+            type: MessageType.INFO,
+            text: `Switched model to \`${modelId}\` for this session.`,
+          },
+          Date.now(),
+        );
+      } catch (error) {
+        console.error('Failed to switch model:', error);
+        addItem(
+          {
+            type: MessageType.ERROR,
+            text: `Failed to switch to model \`${modelId}\`. Please try again.`,
+          },
+          Date.now(),
+        );
+      }
     },
     [config, setCurrentModel, addItem],
   );
@@ -669,7 +679,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
     if (!contentGeneratorConfig) return [];
 
     const visionModelPreviewEnabled =
-      settings.merged.experimental?.visionModelPreview ?? false;
+      settings.merged.experimental?.visionModelPreview ?? true;
 
     switch (contentGeneratorConfig.authType) {
       case AuthType.QWEN_OAUTH:
@@ -758,7 +768,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
     setModelSwitchedFromQuotaError,
     refreshStatic,
     () => cancelHandlerRef.current(),
-    settings.merged.experimental?.visionModelPreview ?? false,
+    settings.merged.experimental?.visionModelPreview ?? true,
     handleVisionSwitchRequired,
   );
 
@@ -873,7 +883,6 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
 
   const { elapsedTime, currentLoadingPhrase } =
     useLoadingIndicator(streamingState);
-  const showAutoAcceptIndicator = useAutoAcceptIndicator({ config, addItem });
 
   const handleExit = useCallback(
     (
@@ -1519,7 +1528,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
                     elapsedTime={elapsedTime}
                     rightContent={
                       <Text color={Colors.AccentCyan}>
-                        {` Powered by promptanswers.ai`}
+                        {` promptanswers.ai`}
                       </Text>
                     }
                   />
@@ -1617,7 +1626,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
                 )}
                 
                 {/* Status Indicators - Only show when there's content */}
-                {((showAutoAcceptIndicator !== ApprovalMode.DEFAULT && !shellModeActive) || shellModeActive) && (
+                {shellModeActive && (
                   <Box 
                     paddingTop={isNarrow ? 1 : 0}
                     borderStyle="round" 
@@ -1626,12 +1635,6 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
                     paddingY={1}
                     backgroundColor={Colors.Background}
                   >
-                    {showAutoAcceptIndicator !== ApprovalMode.DEFAULT &&
-                      !shellModeActive && (
-                        <AutoAcceptIndicator
-                          approvalMode={showAutoAcceptIndicator}
-                        />
-                      )}
                     {shellModeActive && <ShellModeIndicator />}
                   </Box>
                 )}

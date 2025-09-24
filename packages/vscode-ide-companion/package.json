@@ -2,7 +2,7 @@
   "name": "prompt-code-vscode-ide-companion",
   "displayName": "Prompt Code Companion",
   "description": "Enable Prompt Code with direct access to your VS Code workspace.",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "publisher": "qwenlm",
   "icon": "assets/icon.png",
   "repository": {
