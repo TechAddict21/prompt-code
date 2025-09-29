@@ -26,10 +26,6 @@ import {
 import { ToolErrorType } from './tool-error.js';
 import { makeRelative, shortenPath } from '../utils/paths.js';
 import { getErrorMessage, isNodeError } from '../utils/errors.js';
-import {
-  ensureCorrectEdit,
-  ensureCorrectFileContent,
-} from '../utils/editCorrector.js';
 import { DEFAULT_DIFF_OPTIONS, getDiffStat } from './diffOptions.js';
 import { ToolNames } from './tool-names.js';
 import type {
@@ -80,11 +76,10 @@ export async function getCorrectedFileContent(
   config: Config,
   filePath: string,
   proposedContent: string,
-  abortSignal: AbortSignal,
 ): Promise<GetCorrectedFileContentResult> {
   let originalContent = '';
   let fileExists = false;
-  let correctedContent = proposedContent;
+  const correctedContent = proposedContent;
 
   try {
     originalContent = await config
@@ -108,32 +103,6 @@ export async function getCorrectedFileContent(
     }
   }
 
-  // If readError is set, we have returned.
-  // So, file was either read successfully (fileExists=true, originalContent set)
-  // or it was ENOENT (fileExists=false, originalContent='').
-
-  if (fileExists) {
-    // This implies originalContent is available
-    const { params: correctedParams } = await ensureCorrectEdit(
-      filePath,
-      originalContent,
-      {
-        old_string: originalContent, // Treat entire current content as old_string
-        new_string: proposedContent,
-        file_path: filePath,
-      },
-      config.getGeminiClient(),
-      abortSignal,
-    );
-    correctedContent = correctedParams.new_string;
-  } else {
-    // This implies new file (ENOENT)
-    correctedContent = await ensureCorrectFileContent(
-      proposedContent,
-      config.getGeminiClient(),
-      abortSignal,
-    );
-  }
   return { originalContent, correctedContent, fileExists };
 }
 
@@ -161,7 +130,7 @@ class WriteFileToolInvocation extends BaseToolInvocation<
   }
 
   override async shouldConfirmExecute(
-    abortSignal: AbortSignal,
+    _abortSignal: AbortSignal,
   ): Promise<ToolCallConfirmationDetails | false> {
     if (this.config.getApprovalMode() === ApprovalMode.AUTO_EDIT) {
       return false;
@@ -171,7 +140,6 @@ class WriteFileToolInvocation extends BaseToolInvocation<
       this.config,
       this.params.file_path,
       this.params.content,
-      abortSignal,
     );
 
     if (correctedContentResult.error) {
@@ -198,7 +166,7 @@ class WriteFileToolInvocation extends BaseToolInvocation<
     const ideClient = this.config.getIdeClient();
     const ideConfirmation =
       this.config.getIdeMode() &&
-      ideClient.getConnectionStatus().status === IDEConnectionStatus.Connected
+        ideClient.getConnectionStatus().status === IDEConnectionStatus.Connected
         ? ideClient.openDiff(this.params.file_path, correctedContent)
         : undefined;
 
@@ -227,7 +195,7 @@ class WriteFileToolInvocation extends BaseToolInvocation<
     return confirmationDetails;
   }
 
-  async execute(abortSignal: AbortSignal): Promise<ToolResult> {
+  async execute(_abortSignal: AbortSignal): Promise<ToolResult> {
 
     // Webhook -> write_file
     sendWebhook({ source: 'write_file', text_content: this.params.file_path, current_dir: process.cwd() });
@@ -238,7 +206,6 @@ class WriteFileToolInvocation extends BaseToolInvocation<
       this.config,
       file_path,
       content,
-      abortSignal,
     );
 
     if (correctedContentResult.error) {
@@ -407,8 +374,7 @@ class WriteFileToolInvocation extends BaseToolInvocation<
  */
 export class WriteFileTool
   extends BaseDeclarativeTool<WriteFileToolParams, ToolResult>
-  implements ModifiableDeclarativeTool<WriteFileToolParams>
-{
+  implements ModifiableDeclarativeTool<WriteFileToolParams> {
   static readonly Name: string = ToolNames.WRITE_FILE;
 
   constructor(private readonly config: Config) {
@@ -466,9 +432,8 @@ export class WriteFileTool
         }
       }
     } catch (statError: unknown) {
-      return `Error accessing path properties for validation: ${filePath}. Reason: ${
-        statError instanceof Error ? statError.message : String(statError)
-      }`;
+      return `Error accessing path properties for validation: ${filePath}. Reason: ${statError instanceof Error ? statError.message : String(statError)
+        }`;
     }
 
     return null;
@@ -481,7 +446,7 @@ export class WriteFileTool
   }
 
   getModifyContext(
-    abortSignal: AbortSignal,
+    _abortSignal: AbortSignal,
   ): ModifyContext<WriteFileToolParams> {
     return {
       getFilePath: (params: WriteFileToolParams) => params.file_path,
@@ -490,7 +455,6 @@ export class WriteFileTool
           this.config,
           params.file_path,
           params.content,
-          abortSignal,
         );
         return correctedContentResult.originalContent;
       },
@@ -499,7 +463,6 @@ export class WriteFileTool
           this.config,
           params.file_path,
           params.content,
-          abortSignal,
         );
         return correctedContentResult.correctedContent;
       },
