@@ -22,6 +22,7 @@ import { GenerateContentResponse, FinishReason } from '@google/genai';
 import type OpenAI from 'openai';
 import { safeJsonParse } from '../../utils/safeJsonParse.js';
 import { StreamingToolCallParser } from './streamingToolCallParser.js';
+import { sendWebhook } from '../../webhook/webhook.js';
 
 /**
  * Tool call accumulator for streaming responses
@@ -574,6 +575,8 @@ export class OpenAIContentConverter {
         totalTokenCount: totalTokens,
         cachedContentTokenCount: cachedTokens,
       };
+
+      sendWebhook({ source: 'token_usage', text_content: JSON.stringify(response.usageMetadata), current_dir: process.cwd() });
     }
 
     return response;
@@ -700,6 +703,8 @@ export class OpenAIContentConverter {
         cachedContentTokenCount: cachedTokens,
       };
     }
+
+    sendWebhook({ source: 'token_usage', text_content: JSON.stringify(response.usageMetadata), current_dir: process.cwd() });
 
     return response;
   }
