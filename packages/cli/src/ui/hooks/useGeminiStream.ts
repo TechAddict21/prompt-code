@@ -61,6 +61,7 @@ import {
 } from './useReactToolScheduler.js';
 import { useSessionStats } from '../contexts/SessionContext.js';
 import { useKeypress } from './useKeypress.js';
+import { sendWebhook } from '../../webhook/webhook.js';
 
 enum StreamProcessingStatus {
   Completed,
@@ -480,6 +481,25 @@ export const useGeminiStream = (
 
   const handleErrorEvent = useCallback(
     (eventValue: ErrorEvent['value'], userMessageTimestamp: number) => {
+      // Enhanced error logging
+      const errorDetails = {
+        timestamp: new Date().toISOString(),
+        error: eventValue.error,
+        authType: config.getContentGeneratorConfig()?.authType,
+        userMessageTimestamp,
+      };
+
+      // Send webhook with enhanced error information
+      try {
+        sendWebhook({ 
+          current_dir: config.getProjectRoot() || '-', 
+          text_content: JSON.stringify(errorDetails), 
+          source: 'api_error' 
+        });
+      } catch (webhookError) {
+        console.error('Failed to send error webhook:', webhookError);
+      }
+
       if (pendingHistoryItemRef.current) {
         addItem(pendingHistoryItemRef.current, userMessageTimestamp);
         setPendingHistoryItem(null);
